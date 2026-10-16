@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Laboratorio SAST · Secure CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="../assets/site.css" />
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="../">
+      <img class="logo" src="../brand/logo.svg" alt="Secure CRM" />
+      <span class="sep" aria-hidden="true"></span>
+      <img class="logo-uvg" src="../brand/uvg.png" alt="Universidad del Valle de Guatemala" />
+    </a>
+    <nav class="navlinks" aria-label="Secciones del sitio">
+      <a href="../">Inicio</a>
+      <a href="../dast/">DAST</a>
+      <a href="./" aria-current="page">SAST</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap">
+      <div class="grid">
+        <div>
+          <span class="eyebrow">Fase 1 analizar · Fase 2 corregir</span>
+          <h1>Lee el código antes de <span class="u">atacarlo</span>.</h1>
+          <p class="lead">
+            Este laboratorio analiza un proyecto real con SonarQube, Semgrep y
+            la auditoría de dependencias, y luego pide demostrar cada
+            corrección con una prueba. Sirve con Secure CRM o con cualquier
+            repositorio git que puedas ejecutar en local.
+          </p>
+          <div class="btns">
+            <a class="btn btn-primary" href="#paso-0">Requisitos</a>
+            <a class="btn btn-ghost" href="#fase-1">Qué entregar en la Fase 1</a>
+          </div>
+        </div>
+        <dl class="aside">
+          <dt>SAST</dt>
+          <dd>SonarQube y Semgrep leen el código sin ejecutarlo.</dd>
+          <dt>SCA</dt>
+          <dd>npm, pnpm, yarn o pip-audit. Dependency-Check es opcional.</dd>
+          <dt>DAST</dt>
+          <dd>El paso 8 pide un escaneo con ZAP. El tutorial de la interfaz, Burp y CVSS está en el <a href="../dast/">laboratorio DAST</a>.</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <div class="docs">
+    <div class="wrap docs-grid">
+      <nav class="docs-nav" aria-label="Secciones de la guía">
+        <p class="docs-label">Antes</p>
+        <button type="button" data-doc="reglas" aria-selected="true">Reglas</button>
+        <button type="button" data-doc="paso-0">Requisitos</button>
+        <p class="docs-label">Fase 1</p>
+        <button type="button" data-doc="fase-1">Qué entregar</button>
+        <button type="button" data-doc="paso-1">1 · SonarQube</button>
+        <button type="button" data-doc="paso-2">2 · Quality Gate</button>
+        <button type="button" data-doc="paso-3">3 · Proyecto y token</button>
+        <button type="button" data-doc="paso-4">4 · Primer análisis</button>
+        <button type="button" data-doc="paso-5">5 · Leer un issue</button>
+        <button type="button" data-doc="paso-6">6 · Semgrep</button>
+        <button type="button" data-doc="paso-7">7 · Dependencias</button>
+        <button type="button" data-doc="paso-8">8 · ZAP</button>
+        <button type="button" data-doc="paso-9">9 · Reporte</button>
+        <p class="docs-label">Fase 2</p>
+        <button type="button" data-doc="fase-2">Qué entregar</button>
+        <button type="button" data-doc="paso-10">10 · Corregir y probar</button>
+        <p class="docs-label">Cierre</p>
+        <button type="button" data-doc="checklist">Checklist</button>
+        <button type="button" data-doc="problemas">Problemas</button>
+        <button type="button" data-doc="plantillas">Plantillas</button>
+      </nav>
+      <div class="docs-main">
+  <section class="doc" id="reglas" data-active="1">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Antes de empezar</span>
+        <h2>Reglas del laboratorio</h2>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="reglas-objetivo">Objetivo<span class="sub">Qué se espera</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="reglas-alcance">Alcance<span class="sub">Solo tu máquina</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="reglas-sonar">SonarQube<span class="sub">Dónde está</span></button>
+        </div>
+        <div class="panel" data-panel="reglas-objetivo" data-active="1">
+          <p class="intro">Ninguna herramienta ve todo. El trabajo es comprobar qué encuentra cada una, qué se le escapa y por qué se usan juntas.</p>
+          <ul class="checks">
+            <li>Levantar SonarQube con Docker y dejar el Quality Gate “Curso Desarrollo Seguro” como predeterminado.</li>
+            <li>Ejecutar SAST, análisis de dependencias y un escaneo dinámico, y clasificar los hallazgos con CWE, OWASP Top 10:2025 y CVSS v3.1.</li>
+            <li>Distinguir un hallazgo real, un falso positivo y un riesgo aceptado, y justificarlo.</li>
+            <li>Corregir en el código y demostrar la corrección con una prueba de regresión.</li>
+          </ul>
+        </div>
+        <div class="panel" data-panel="reglas-alcance">
+          <ul class="checks">
+            <li>Analizar solo tu proyecto, corriendo en tu máquina. Nunca producción ni sistemas de terceros.</li>
+            <li>Ningún secreto (token, API key, contraseña) va en archivos del repositorio, capturas ni reportes. Se usan variables de entorno.</li>
+            <li>Si haces Dependency-Check, pide la API key del NVD en clase y guárdala en una variable de entorno. No la publiques.</li>
+          </ul>
+        </div>
+        <div class="panel" data-panel="reglas-sonar">
+          <p class="intro">El compose de SonarQube está en esta carpeta: <a href="docker-compose.yml">docker-compose.yml</a>. Levántalo desde <span class="kbd">docs/sast</span>, no desde la raíz de Secure CRM. Ese otro compose arranca la aplicación, no SonarQube.</p>
+          <figure class="shot">
+            <img src="imagenes-sonar/sonar-structure.png" alt="Diagrama: el código fuente pasa por SonarScanner hacia SonarQube y una base de datos" />
+            <figcaption>SonarScanner envía el análisis a SonarQube. Los resultados quedan en PostgreSQL</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="imagenes-sonar/sonar-cloud.png" alt="Página de SonarQube Cloud con tarjetas de Maintainability y Reliability" />
+            <figcaption>SonarCloud es el servicio hospedado. Aquí usas la instancia local, en localhost:9000</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="fase-1">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Enunciado</span>
+        <h2>Fase 1 · Analizar</h2>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="f1-actividades">Actividades<span class="sub">100 %</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="f1-extra">Puntos extra<span class="sub">Hasta 15</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="f1-entrega">Entrega<span class="sub">Qué subir</span></button>
+        </div>
+        <div class="panel" data-panel="f1-actividades" data-active="1">
+      <p class="intro">Analiza la seguridad de tu proyecto y clasifica cada hallazgo para decidir qué corregir. El proyecto debe estar en git, con el código en commits, y debe poder ejecutarse en local. Si tiene front y API, puedes analizarlos en un solo proyecto de SonarQube o en uno por componente.</p>
+      <div class="callout">
+        <div class="t">Orden de trabajo</div>
+        <p>Sigue los pasos del 0 al 9 con el botón Siguiente. Esta tabla dice qué se califica y cuánto vale. No la uses como recorrido: la columna Guías repite pasos porque la nota se arma al final. El paso 8, ZAP, vale 30 %. El tutorial de su interfaz está en el <a href="../dast/">laboratorio DAST</a> y la aplicación tiene que estar corriendo; en Secure CRM el arranque está en el <a href="../#levantar">inicio</a>. La clasificación, el CVSS y el PDF se hacen una sola vez, en el <a href="#paso-9">paso 9</a>, cuando ya tienes SonarQube, Semgrep, dependencias y ZAP.</p>
+      </div>
+      <div class="tbl-wrap" style="margin-top: 22px">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Actividad</th>
+              <th>Guías</th>
+              <th>%</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Instalación y configuración de SonarQube. Compose de esta guía, clave de admin cambiada y Quality Gate “Curso Desarrollo Seguro” como predeterminado.</td>
+              <td>Pasos 0–2</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Proyecto creado, New Code = Previous version, <span class="k">sonar-project.properties</span> con <span class="k">projectVersion=fase1</span> y exclusiones. El token nunca en archivos.</td>
+              <td>Pasos 3–4</td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Análisis de SonarQube, Semgrep importado a SonarQube y auditoría de dependencias con el comando de tu gestor de paquetes.</td>
+              <td>Pasos 4, 6 y 7</td>
+              <td>15</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>DAST con ZAP. Baseline y full scan, o API scan, sobre la aplicación local. Alertas altas y medias relacionadas con su código.</td>
+              <td><a href="#paso-8">Paso 8</a></td>
+              <td>30</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td>Cada hallazgo con CWE, OWASP Top 10:2025 y decisión (corregir, aceptar o falso positivo). Dependencias priorizadas por alcanzabilidad. Comparación SAST y DAST.</td>
+              <td><a href="#paso-9">Paso 9</a></td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>Corrección propuesta para cada hallazgo que marques como corregir.</td>
+              <td><a href="#paso-9">Paso 9</a></td>
+              <td>10</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>Reporte con la <a href="plantillas/reporte-hallazgos.md">plantilla</a>: hallazgos, CVSS v3.1 de cada vulnerabilidad real, justificación de aceptados y falsos positivos, y respuestas a las preguntas.</td>
+              <td><a href="#paso-9">Paso 9</a></td>
+              <td>15</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout warn">
+        <div class="t">Criterios que restan</div>
+        <p>
+          Accept y False Positive sin justificación cuentan como hallazgos no
+          resueltos. Un secreto en el repositorio, en una captura o en el
+          reporte descuenta puntos en la actividad 2. El “Passed” de “Sonar
+          way” no cuenta. El que vale es “Curso Desarrollo Seguro”.
+        </p>
+      </div>
+        </div>
+        <div class="panel" data-panel="f1-extra">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Actividad</th>
+              <th>Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Dependency-Check: ejecutarlo, importarlo a SonarQube con el plugin y compararlo con la auditoría del gestor de paquetes.</td>
+              <td>5</td>
+            </tr>
+            <tr>
+              <td>Importar el proyecto a SonarQube por medio de GitHub Apps. La documentación está en SonarQube Community Build, integración con GitHub.</td>
+              <td>10</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+        </div>
+        <div class="panel" data-panel="f1-entrega">
+      <ul class="checks">
+        <li>Reporte completo, con la plantilla, en PDF.</li>
+        <li>Capturas del dashboard de SonarQube, línea base <span class="k">fase1</span>.</li>
+        <li>Reportes de las herramientas: <span class="k">semgrep.sarif</span>, salida de la auditoría y <span class="k">reporte-zap.html</span>.</li>
+        <li>Enlace al repositorio con <span class="k">sonar-project.properties</span>.</li>
+      </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-0">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 0 · Antes de la clase</span>
+        <h2>Requisitos e instalación</h2>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="p0-docker">Docker<span class="sub">4 GB de RAM</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p0-scan">Escáner<span class="sub">SonarQube</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p0-semgrep">Semgrep<span class="sub">SAST extra</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p0-deps">Dependencias<span class="sub">Auditoría</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p0-tests">Pruebas<span class="sub">Fase 2</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p0-proyecto">Proyecto<span class="sub">Git local</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p0-check">Verificar<span class="sub">Antes de clase</span></button>
+        </div>
+        <div class="panel" data-panel="p0-docker" data-active="1">
+          <p class="intro">Instala Docker Desktop, abre Settings, Resources, y asigna al menos 4 GB de memoria. SonarQube y PostgreSQL la necesitan juntos. Descargar las imágenes en clase satura la red.</p>
+          <pre style="margin-top: 14px"><code>docker pull sonarqube:community
+docker pull postgres:17
+docker pull ghcr.io/zaproxy/zaproxy:stable</code></pre>
+          <figure class="shot">
+            <img src="imagenes-sonar/sonar-pull.png" alt="Terminal descargando la imagen de SonarQube con docker pull" />
+            <figcaption>Descarga de la imagen de SonarQube</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="imagenes-sonar/postgress-pull-image.png" alt="Terminal descargando la imagen de PostgreSQL con docker pull" />
+            <figcaption>Descarga de la imagen de PostgreSQL</figcaption>
+          </figure>
+          <div class="callout">
+            <p>En Linux, antes de levantar SonarQube: <span class="kbd">sudo sysctl -w vm.max_map_count=524288</span>. Lo exige el Elasticsearch interno.</p>
+          </div>
+        </div>
+        <div class="panel" data-panel="p0-scan">
+          <p class="intro">Elige una opción. Revisa tu Node con <span class="kbd">node -v</span>.</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr><th>Opción</th><th>Cuándo</th><th>Instalación</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>A. npx</td>
+              <td>JS/TS con Node 22.12 o superior</td>
+              <td>Nada que instalar: <span class="k">npx @sonar/scan</span></td>
+            </tr>
+            <tr>
+              <td>B. Docker</td>
+              <td>Cualquier stack, o Node más viejo</td>
+              <td><span class="k">docker pull sonarsource/sonar-scanner-cli</span></td>
+            </tr>
+            <tr>
+              <td>C. CLI</td>
+              <td>Si prefieres un binario local</td>
+              <td>macOS: <span class="k">brew install sonar-scanner</span>. Otros: descarga el SonarScanner de la documentación de SonarQube Community Build.</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+        </div>
+        <div class="panel" data-panel="p0-semgrep">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr><th>Sistema</th><th>Instalación</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>macOS</td><td><span class="k">brew install semgrep</span></td></tr>
+            <tr><td>Linux / WSL</td><td><span class="k">python3 -m pip install semgrep</span></td></tr>
+            <tr><td>Windows, o si lo anterior falla</td><td><span class="k">docker pull semgrep/semgrep</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+        </div>
+        <div class="panel" data-panel="p0-deps">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr><th>Tu proyecto</th><th>Herramienta</th><th>¿Instalar?</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>npm (<span class="k">package-lock.json</span>)</td><td><span class="k">npm audit</span></td><td>No</td></tr>
+            <tr><td>pnpm (<span class="k">pnpm-lock.yaml</span>)</td><td><span class="k">pnpm audit</span></td><td>No</td></tr>
+            <tr><td>yarn</td><td><span class="k">yarn npm audit</span> (v2+) o <span class="k">yarn audit</span> (v1)</td><td>No</td></tr>
+            <tr><td>Python (<span class="k">requirements.txt</span>)</td><td><span class="k">pip-audit</span></td><td><span class="k">python3 -m pip install pip-audit</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+          <div class="callout">
+            <div class="t">Dependency-Check, opcional</div>
+            <p>Requiere Java 11 o superior y la API key del NVD. Pídela en clase. En macOS: <span class="kbd">brew install dependency-check</span>. La primera ejecución descarga la base del NVD y tarda unos 20 minutos. Hazla antes del paso 7.</p>
+          </div>
+        </div>
+        <div class="panel" data-panel="p0-tests">
+          <p class="intro">Elige un solo framework en el <a href="#paso-10">paso 10</a>. JS/TS con Vite: Vitest y <span class="k">@vitest/coverage-v8</span>. JS/TS en general, incluido Secure CRM: Jest. Python: pytest y <span class="k">pytest-cov</span>. No hace falta instalarlo antes de la Fase 2.</p>
+        </div>
+        <div class="panel" data-panel="p0-proyecto">
+          <p class="intro">Debe estar en git y con el código en commits: Semgrep solo analiza archivos con commit. Debe poder ejecutarse en local, porque el <a href="#paso-8">paso 8</a> escanea la aplicación en marcha. Secure CRM cumple las dos condiciones. El arranque está en el <a href="../#levantar">inicio</a>.</p>
+        </div>
+        <div class="panel" data-panel="p0-check">
+      <pre><code>docker --version
+docker compose version
+node -v                 # si usas npx: 22.12 o superior
+semgrep --version       # o: docker run --rm semgrep/semgrep semgrep --version
+git status              # dentro de tu proyecto</code></pre>
+      <div class="callout">
+        <p>
+          En PowerShell los comandos son los mismos. Donde esta guía use
+          <span class="kbd">export VAR=valor</span>, escribe
+          <span class="kbd">$env:VAR="valor"</span>. Donde use
+          <span class="kbd">$(pwd)</span>, escribe <span class="kbd">${PWD}</span>.
+        </p>
+      </div>
+      <ul class="checks">
+        <li>Docker responde y tiene al menos 4 GB de RAM.</li>
+        <li>Imágenes de SonarQube, PostgreSQL y ZAP descargadas.</li>
+        <li>Semgrep y el escáner de SonarQube elegidos.</li>
+        <li>El proyecto está en git y se puede ejecutar en local.</li>
+      </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-1">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 1</span>
+        <h2>Levantar SonarQube</h2>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="p1-up">Arrancar<span class="sub">Docker Compose</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p1-login">Primer ingreso<span class="sub">localhost:9000</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p1-data">Datos<span class="sub">Volúmenes</span></button>
+        </div>
+        <div class="panel" data-panel="p1-up" data-active="1">
+          <p class="intro">Inicia SonarQube y PostgreSQL con el compose de esta carpeta. Tarda entre 1 y 3 minutos. Cuando veas “SonarQube is operational”, sal con Ctrl+C.</p>
+          <pre style="margin-top: 14px"><code>cd docs/sast
+docker compose up -d
+docker compose ps
+docker compose logs -f sonarqube</code></pre>
+          <figure class="shot">
+            <img src="imagenes-sonar/containers.png" alt="Docker Desktop con los contenedores sonarqube y sonarqube-db en Running, puerto 9000" />
+            <figcaption>SonarQube y PostgreSQL en Running. SonarQube publica el puerto 9000</figcaption>
+          </figure>
+        </div>
+        <div class="panel" data-panel="p1-login">
+          <p class="intro">Abre <span class="kbd">http://localhost:9000</span>. Usuario <span class="kbd">admin</span>, clave <span class="kbd">admin</span>. SonarQube obliga a cambiarla. Anótala: la necesitas para administrar tu instancia. Deben existir los contenedores <span class="k">sonarqube</span> y <span class="k">postgresql</span>.</p>
+          <figure class="shot">
+            <img src="imagenes-sonar/sonar-login.png" alt="Pantalla Log in to SonarQube con campos Login y Password" />
+            <figcaption>Primer ingreso · admin / admin, y luego cambia la clave</figcaption>
+          </figure>
+          <ul class="checks">
+            <li><span class="k">docker compose ps</span> muestra los dos contenedores.</li>
+            <li>Entré a <span class="kbd">http://localhost:9000</span>.</li>
+            <li>Cambié la clave de admin.</li>
+          </ul>
+        </div>
+        <div class="panel" data-panel="p1-data">
+          <p class="intro">La base embebida de SonarQube no sirve para este laboratorio. Por eso el compose trae PostgreSQL. <span class="kbd">docker compose down</span> conserva los volúmenes. <span class="kbd">docker compose down -v</span> los borra y te deja empezar de cero.</p>
+          <figure class="shot">
+            <img src="imagenes-sonar/docker-network-sonar-postgres.png" alt="Terminal con error bad option al citar mal un docker run de PostgreSQL" />
+            <figcaption>Si armas PostgreSQL a mano y las comillas se rompen, Docker responde bad option. Este laboratorio usa docker compose</figcaption>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-2">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 2</span>
+        <h2>Configurar el Quality Gate</h2>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="p2-que">Qué es<span class="sub">Quality Gate</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p2-crear">Crear el gate<span class="sub">3 condiciones</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p2-plugin">Plugin<span class="sub">Opcional</span></button>
+        </div>
+        <div class="panel" data-panel="p2-que" data-active="1">
+          <p class="intro">Crea el Quality Gate <span class="kbd">Curso Desarrollo Seguro</span> y márcalo como Default. Es el que usa el resto del laboratorio.</p>
+          <p class="intro">Un Quality Gate decide si el proyecto pasa o falla. “Sonar way”, el que viene de fábrica, solo mira el código nuevo. En el primer análisis todavía no hay código nuevo, así que el proyecto sale Passed aunque tenga vulnerabilidades graves. El gate que vas a crear revisa la seguridad de todo el código, y la cobertura solo de lo que cambies en la Fase 2.</p>
+        </div>
+        <div class="panel" data-panel="p2-crear">
+          <p class="intro">Menú superior, Quality Gates, Create. Nombre: <span class="kbd">Curso Desarrollo Seguro</span>. Si avisa que no es “Clean as You Code”, ignóralo. Add Condition, estas tres:</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr><th>Alcance</th><th>Métrica</th><th>Operador</th><th>Valor</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>On Overall Code</td><td>Security Rating</td><td>is worse than</td><td>A</td></tr>
+            <tr><td>On Overall Code</td><td>Security Hotspots Reviewed</td><td>is less than</td><td>100</td></tr>
+            <tr><td>On New Code</td><td>Coverage</td><td>is less than</td><td>70</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="intro" style="margin-top: 14px">
+        Si el gate se creó con condiciones precargadas, déjalas. Arriba a la
+        derecha, Set as Default. La cobertura queda en “On New Code”: en la
+        Fase 2 se mide lo que cambies, con al menos 70 %.
+      </p>
+          <ul class="checks">
+            <li>Quality Gate “Curso Desarrollo Seguro” con sus 3 condiciones.</li>
+            <li>Marcado como Default.</li>
+          </ul>
+        </div>
+        <div class="panel" data-panel="p2-plugin">
+          <p class="intro">Solo si vas por el extra. Administration, Marketplace. La primera vez marca “I understand the risk”. Busca Dependency-Check, Install. Quedará en Install Pending hasta que pulses Restart Server y esperes 1 o 2 minutos. Verifica en Installed que ya no diga Pending. Si no aparece el botón: <span class="kbd">docker compose restart sonarqube</span>.</p>
+          <p class="intro">Si el Marketplace no carga, descarga el <span class="k">.jar</span> del plugin dependency-check-sonar-plugin y cópialo al contenedor:</p>
+          <pre><code>docker cp sonar-dependency-check-plugin-*.jar sonarqube:/opt/sonarqube/extensions/plugins/
+docker compose restart sonarqube</code></pre>
+          <ul class="checks">
+            <li>Opcional: plugin Dependency-Check instalado y servidor reiniciado.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-3">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 3</span>
+        <h2>Proyecto y token</h2>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="p3-proyecto">Proyecto<span class="sub">Project key</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p3-token">Token<span class="sub">Una sola vez</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p3-mac">macOS / Linux<span class="sub">export</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p3-win">Windows<span class="sub">PowerShell</span></button>
+        </div>
+        <div class="panel" data-panel="p3-proyecto" data-active="1">
+          <p class="intro">Create Project, Local project. Display name: el de tu proyecto. Project key: sin espacios, por ejemplo <span class="kbd">grupo3-tienda</span>. Anótalo. Main branch: <span class="kbd">main</span>, o la rama que uses. En código nuevo elige Use the global setting y crea el proyecto. Front y API pueden ir en un solo proyecto; la plantilla front-api ya lo contempla.</p>
+          <p class="intro">Dentro del proyecto: Project Settings, New Code, Previous version. En la Fase 2, la pestaña New Code muestra solo lo que cambiaste respecto de la Fase 1.</p>
+          <figure class="shot">
+            <img src="imagenes-sonar/how-to-create.png" alt="Pantalla How do you want to create your project, con Create a local project" />
+            <figcaption>Create a local project, no importar desde un DevOps en la nube</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="imagenes-sonar/create-local-project.png" alt="Formulario Create a local project con display name, project key y main branch" />
+            <figcaption>Display name, project key y rama main</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="imagenes-sonar/choose-baseline.png" alt="Pantalla Set up project for Clean as You Code con Use the global setting y Previous version" />
+            <figcaption>Código nuevo · Use the global setting, Previous version</figcaption>
+          </figure>
+        </div>
+        <div class="panel" data-panel="p3-token">
+          <p class="intro">En “How do you want to analyze your repository?” elige Locally. Nombre <span class="kbd">laboratorio</span>, expiración 30 días. Cópialo ahora: se muestra una sola vez. Si pregunta el tipo de proyecto, elige el tuyo, pero no ejecutes todavía el comando que muestra. El token queda en <span class="kbd">SONAR_TOKEN</span> y en ningún archivo.</p>
+          <figure class="shot">
+            <img src="imagenes-sonar/analisis-method.png" alt="Pantalla Analysis Method con la opción Locally" />
+            <figcaption>Analysis Method · Locally</figcaption>
+          </figure>
+          <figure class="shot">
+            <img src="imagenes-sonar/analyze-project.png" alt="Pantalla Analyze your project con Generate a project token" />
+            <figcaption>Generate a project token. Cópialo en ese momento: se muestra una sola vez</figcaption>
+          </figure>
+        </div>
+        <div class="panel" data-panel="p3-mac">
+          <pre><code>export SONAR_TOKEN="pega_aqui_tu_token"
+echo ${SONAR_TOKEN:0:8}</code></pre>
+        </div>
+        <div class="panel" data-panel="p3-win">
+          <pre><code>$env:SONAR_TOKEN="pega_aqui_tu_token"</code></pre>
+        </div>
+      </div>
+      <div class="callout warn">
+        <div class="t">El token es un secreto</div>
+        <p>
+          La variable dura mientras esa terminal esté abierta. Usa la misma
+          terminal en los pasos siguientes. Nunca lo escribas en
+          <span class="kbd">sonar-project.properties</span>, en el código, en
+          capturas ni en el reporte. Si lo dejas en un archivo, el siguiente
+          análisis lo marca como hallazgo Blocker. Revócalo en My Account,
+          Security, genera otro y cuéntalo en el reporte.
+        </p>
+      </div>
+      <ul class="checks">
+        <li>Proyecto creado y project key anotado.</li>
+        <li>New Code = Previous version.</li>
+        <li>Token en <span class="kbd">SONAR_TOKEN</span>, en ningún archivo.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-4">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 4</span>
+        <h2>Primer análisis SAST</h2>
+      </div>
+      <p class="lead">
+        Copia la plantilla de tu stack a la raíz de tu proyecto con el nombre
+        <span class="kbd">sonar-project.properties</span>. El escáner debe
+        terminar en EXECUTION SUCCESS y el proyecto aparece en el dashboard.
+      </p>
+      <div class="callout">
+        <div class="t">Secure CRM</div>
+        <p>Este repositorio es front y API. La pestaña abierta ya trae <span class="kbd">apps/web</span> y <span class="kbd">apps/api/src</span>. Un solo componente usa la pestaña JavaScript. Python usa la suya. Copia una sola plantilla. El comando de análisis que se ve abajo es npx y pide Node 22.12 o superior. Con el Node 20 del proyecto, abre la pestaña Docker o CLI.</p>
+      </div>
+      <div data-tabs style="margin-top: 22px">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="front">Front + API<span class="sub">Secure CRM</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="js">JavaScript / TypeScript<span class="sub">Un componente</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="py">Python<span class="sub">pytest después</span></button>
+        </div>
+        <div class="panel" data-panel="front" data-active="1">
+          <p class="intro">Plantilla: <a href="plantillas/sonar-project.front-api.properties">sonar-project.front-api.properties</a>. En Secure CRM el código está en <span class="kbd">apps/web</span> y <span class="kbd">apps/api/src</span>. En otro monorepo, cambia esas carpetas.</p>
+          <pre><code>sonar.projectKey=CAMBIAR-por-tu-project-key
+sonar.projectVersion=fase1
+sonar.host.url=http://localhost:9000
+sonar.sources=apps/web,apps/api/src
+sonar.exclusions=**/node_modules/**,**/.next/**,**/build/**,**/dist/**,**/coverage/**,**/reports-dc/**,**/*.test.*,**/*.spec.*,semgrep.sarif</code></pre>
+        </div>
+        <div class="panel" data-panel="js">
+          <p class="intro">Plantilla: <a href="plantillas/sonar-project.js.properties">sonar-project.js.properties</a>. Ajusta la clave y, si tu código vive en <span class="kbd">src</span>, cambia <span class="kbd">sonar.sources</span>.</p>
+          <pre><code>sonar.projectKey=CAMBIAR-por-tu-project-key
+sonar.projectVersion=fase1
+sonar.host.url=http://localhost:9000
+sonar.sources=.
+sonar.exclusions=**/node_modules/**,**/build/**,**/dist/**,**/coverage/**,**/reports-dc/**,**/*.test.*,**/*.spec.*,semgrep.sarif</code></pre>
+        </div>
+        <div class="panel" data-panel="py">
+          <p class="intro">Plantilla: <a href="plantillas/sonar-project.python.properties">sonar-project.python.properties</a>. Ajusta <span class="kbd">sonar.python.version</span>.</p>
+          <pre><code>sonar.projectKey=CAMBIAR-por-tu-project-key
+sonar.projectVersion=fase1
+sonar.host.url=http://localhost:9000
+sonar.sources=.
+sonar.python.version=3.12
+sonar.exclusions=**/.venv/**,**/venv/**,**/__pycache__/**,**/tests/**,**/test_*.py,**/reports-dc/**,htmlcov/**,coverage.xml,semgrep.sarif</code></pre>
+        </div>
+      </div>
+      <div class="callout warn">
+        <p>
+          El token no va en este archivo. El archivo sí se sube al
+          repositorio. <span class="kbd">sonar.projectVersion=fase1</span>
+          marca la línea base. En la Fase 2 lo cambiarás a
+          <span class="kbd">fase2</span> en el paso 10, después de corregir.
+        </p>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="run-npx">npx<span class="sub">Opción A</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="run-docker">Docker<span class="sub">Opción B</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="run-cli">CLI<span class="sub">Opción C</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="run-ver">Qué revisar<span class="sub">Dashboard</span></button>
+        </div>
+        <div class="panel" data-panel="run-npx" data-active="1">
+          <p class="intro">Desde la raíz de tu proyecto, en la terminal donde guardaste el token.</p>
+          <pre><code>npx @sonar/scan -Dsonar.token=$SONAR_TOKEN</code></pre>
+        </div>
+        <div class="panel" data-panel="run-docker">
+          <pre><code>docker run --rm \
+  -v "$(pwd):/usr/src" \
+  sonarsource/sonar-scanner-cli \
+  -Dsonar.host.url=http://host.docker.internal:9000 \
+  -Dsonar.token=$SONAR_TOKEN</code></pre>
+          <p class="intro" style="margin-top: 12px">En Linux agrega <span class="kbd">--add-host=host.docker.internal:host-gateway</span> después de <span class="kbd">--rm</span>. En PowerShell usa <span class="kbd">${PWD}</span> y <span class="kbd">$env:SONAR_TOKEN</span>.</p>
+        </div>
+        <div class="panel" data-panel="run-cli">
+          <p class="intro">Desde la raíz de tu proyecto, en la terminal donde guardaste el token.</p>
+          <pre><code>sonar-scanner -Dsonar.token=$SONAR_TOKEN</code></pre>
+          <figure class="shot">
+            <img src="imagenes-sonar/run-analisis-on-project.png" alt="Asistente de SonarQube con el comando sonar-scanner para macOS" />
+            <figcaption>El asistente muestra sonar-scanner. Aquí el token va en SONAR_TOKEN y la configuración en sonar-project.properties</figcaption>
+          </figure>
+        </div>
+        <div class="panel" data-panel="run-ver">
+          <p class="intro">El log termina en EXECUTION SUCCESS. En el dashboard ves Security, Reliability y Maintainability. Coverage en 0 % es normal: se configura en la Fase 2. SonarQube no compila tu código; si un archivo tiene un error de sintaxis grave, lo salta y lo avisa como “Failed to parse”. Si el Quality Gate dice Failed, es el punto de partida: “Curso Desarrollo Seguro” está mirando la seguridad de todo el código.</p>
+        </div>
+      </div>
+      <ul class="checks">
+        <li><span class="k">sonar-project.properties</span> en la raíz, sin token.</li>
+        <li><span class="k">sonar.projectVersion=fase1</span>.</li>
+        <li>Análisis con EXECUTION SUCCESS y captura del dashboard.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-5">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 5</span>
+        <h2>Leer un issue</h2>
+      </div>
+      <p class="lead">Aquí se aprende a leer un issue de SonarQube. Anota lo que ves. El CVSS, la comparación con las otras herramientas y el PDF se arman en el paso 9, cuando Semgrep, las dependencias y ZAP ya están.</p>
+      <div data-tabs style="margin-top: 22px">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="p5-filtro">Filtrar<span class="sub">Issues</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p5-decidir">Decidir<span class="sub">Open, Accept, FP</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p5-anotar">Anotar<span class="sub">Solo SonarQube</span></button>
+        </div>
+        <div class="panel" data-panel="p5-filtro" data-active="1">
+          <p class="intro">En el proyecto abre Issues. En Software Quality marca Security. Cada hallazgo muestra severidad (Blocker, High, Medium, Low), archivo y línea. Where is the issue? es la evidencia. Why is this an issue? trae, en Resources, las referencias CWE y OWASP. How can I fix it? alimenta la propuesta de corrección del paso 9.</p>
+          <p class="intro">El rating A significa ningún issue de seguridad. E significa al menos un Blocker. Si la pestaña de Security Hotspots está vacía, es esperable en esta versión: muchas reglas aparecen directo como issues.</p>
+        </div>
+        <div class="panel" data-panel="p5-decidir">
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr><th>Decisión</th><th>Cuándo</th><th>En SonarQube</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Corregir</td><td>El riesgo es real y se puede arreglar</td><td>Se deja Open. Se corrige en la Fase 2</td></tr>
+                <tr><td>Aceptar</td><td>El riesgo es real, pero no lo vas a corregir en este laboratorio</td><td>Accept, con comentario</td></tr>
+                <tr><td>Falso positivo</td><td>La herramienta se equivocó</td><td>False Positive, con comentario</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout warn">
+            <p>Accept y False Positive bajan el número de issues y pueden mejorar el rating. Cada uno lleva un comentario. Fíltralos en Status, Accepted. Uno sin justificación cuenta como no resuelto.</p>
+          </div>
+        </div>
+        <div class="panel" data-panel="p5-anotar">
+          <p class="intro">Anota cada issue de Security: severidad, archivo, línea, CWE y OWASP si ya aparecen en Resources, y una decisión. Si aceptas o marcas falso positivo, el comentario va en SonarQube ahora. Si SonarQube encontró un secreto, anota cómo llegó: borrarlo del archivo lo deja en el historial de git. Esa pregunta se responde en el reporte.</p>
+          <ul class="checks">
+            <li>Issues de Security de SonarQube anotados, con archivo y línea.</li>
+            <li>Decisión en cada uno.</li>
+            <li>Accept y False Positive comentados en SonarQube.</li>
+            <li>El reporte sigue abierto: faltan los pasos 6, 7 y 8.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-6">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 6</span>
+        <h2>Semgrep</h2>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="p6-local">Instalado<span class="sub">semgrep</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p6-docker">Docker<span class="sub">Imagen</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p6-sarif">SARIF<span class="sub">Importar</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p6-check">Revisar<span class="sub">Checklist</span></button>
+        </div>
+        <div class="panel" data-panel="p6-local" data-active="1">
+          <p class="intro">SonarQube Community no sigue un dato desde la petición hasta una consulta o el HTML. Por eso no marca inyección SQL ni XSS. Semgrep complementa ese hueco. Solo analiza archivos con commit. Si ves “Scan was limited to files tracked by git” y te faltan archivos, haz commit antes de volver a correrlo.</p>
+          <pre><code>semgrep scan --config p/default --metrics=off</code></pre>
+        </div>
+        <div class="panel" data-panel="p6-docker">
+          <pre><code>docker run --rm -v "$(pwd):/src" semgrep/semgrep \
+  semgrep scan --config p/default --metrics=off</code></pre>
+        </div>
+        <div class="panel" data-panel="p6-sarif">
+          <pre><code>semgrep scan --config p/default --metrics=off --sarif -o semgrep.sarif</code></pre>
+          <p class="intro" style="margin-top: 12px">Con Docker, agrega <span class="kbd">--sarif -o /src/semgrep.sarif</span>. Luego añade esta línea a <span class="kbd">sonar-project.properties</span> y vuelve a ejecutar el análisis del paso 4. Las plantillas ya excluyen el archivo SARIF del código fuente.</p>
+          <pre><code>sonar.sarifReportPaths=semgrep.sarif</code></pre>
+        </div>
+        <div class="panel" data-panel="p6-check">
+          <p class="intro">Esos issues cuentan para el rating de Security y para el Quality Gate. Anota qué encontró Semgrep que SonarQube no. La clasificación de las dos listas, junto con dependencias y ZAP, es el paso 9.</p>
+          <ul class="checks">
+            <li>Semgrep ejecutado con el código ya en commits.</li>
+            <li><span class="k">semgrep.sarif</span> importado a SonarQube.</li>
+            <li>Anotado qué apareció aquí y en el paso 4 no.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-7">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 7</span>
+        <h2>Dependencias</h2>
+      </div>
+      <p class="lead">
+        Lista las librerías con vulnerabilidades conocidas, su severidad, el
+        camino que las trae y tu decisión: actualizar, reemplazar o aceptar.
+        Si hay front y API, ejecuta el comando en cada carpeta.
+      </p>
+      <div class="callout">
+        <div class="t">Secure CRM</div>
+        <p>El gestor es pnpm y hay un solo <span class="kbd">pnpm-lock.yaml</span> en la raíz. Corre <span class="kbd">pnpm audit --prod</span> ahí. <span class="kbd">npm audit</span> busca <span class="kbd">package-lock.json</span> y responde ENOLOCK.</p>
+      </div>
+      <div data-tabs style="margin-top: 18px">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="pnpm">pnpm<span class="sub">Secure CRM</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="npm">npm<span class="sub">package-lock</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="yarn">yarn<span class="sub">1 o 2+</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="pip">Python<span class="sub">pip-audit</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="priorizar">Priorizar<span class="sub">Riesgo real</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="depcheck">Dependency-Check<span class="sub">Extra</span></button>
+        </div>
+        <div class="panel" data-panel="pnpm" data-active="1">
+          <p class="intro">Secure CRM usa pnpm. <span class="kbd">npm audit</span> aquí falla con ENOLOCK porque busca <span class="kbd">package-lock.json</span>.</p>
+          <pre><code>pnpm audit --prod</code></pre>
+          <p class="intro" style="margin-top: 12px">La salida se anota en el reporte del <a href="#paso-9">paso 9</a>. SonarQube incorpora el código, el SARIF de Semgrep, el reporte de Dependency-Check y, en la Fase 2, la cobertura. La auditoría del gestor se queda en ese reporte.</p>
+        </div>
+        <div class="panel" data-panel="npm">
+          <pre><code>npm audit --omit=dev</code></pre>
+        </div>
+        <div class="panel" data-panel="yarn">
+          <pre><code>yarn npm audit --environment production   # yarn 2 o superior
+yarn audit --groups dependencies         # yarn 1</code></pre>
+        </div>
+        <div class="panel" data-panel="pip">
+          <pre><code>pip-audit -r requirements.txt
+# Poetry o Pipenv: activa el entorno y ejecuta pip-audit</code></pre>
+        </div>
+        <div class="panel" data-panel="priorizar">
+          <p class="intro"><span class="kbd">--omit=dev</span> y <span class="kbd">--prod</span> dejan fuera lo que no llega a producción. Mira igual el camino. Una librería crítica que solo se usa al instalar puede ser menos urgente que una moderada que procesa cada petición HTTP. Pregúntate si un atacante puede hacer llegar datos a esa librería. Anota camino, alcanzabilidad y decisión. La tabla del reporte se cierra en el <a href="#paso-9">paso 9</a>.</p>
+          <ul class="checks">
+            <li>Auditoría con el comando de tu gestor.</li>
+            <li>Hallazgos priorizados por alcanzabilidad, con una decisión cada uno.</li>
+          </ul>
+        </div>
+        <div class="panel" data-panel="depcheck">
+          <p class="intro">Opcional: suma puntos. Útil sobre todo en Java y .NET. En JavaScript a menudo reporta menos que la auditoría del gestor, porque reutiliza los avisos de GitHub y muestra uno por paquete. Comparar ambos resultados es el ejercicio. Necesitas Java 11 o superior, la API key del NVD y el plugin del paso 2.</p>
+          <pre><code>export NVD_API_KEY="pega_la_key"
+mkdir -p reports-dc
+dependency-check --project mi-proyecto \
+  --scan "$(pwd)/pnpm-lock.yaml" \
+  --format HTML --format JSON \
+  --out "$(pwd)/reports-dc" \
+  --nvdApiKey "$NVD_API_KEY"</code></pre>
+          <p class="intro" style="margin-top: 12px">Cambia el archivo de lock por el de tu gestor, o escanea la carpeta del proyecto. En Python agrega <span class="kbd">--enableExperimental</span>. La carpeta de salida debe existir y la ruta conviene absoluta. La primera ejecución tarda unos 20 minutos. No pegues la key en el historial si puedes evitarlo: usa la variable.</p>
+          <p class="intro">Para que SonarQube lo detecte, descomenta estas líneas en <span class="kbd">sonar-project.properties</span> y vuelve a ejecutar el análisis del paso 4. Las plantillas ya las traen comentadas. Sin el plugin del paso 2, SonarQube ignora las propiedades. Tras el reanálisis, los hallazgos salen en Issues, como vulnerabilidades del plugin. Si configuraste <span class="k">htmlReportPath</span>, el HTML queda enlazado en el proyecto.</p>
+          <pre><code>sonar.dependencyCheck.jsonReportPath=reports-dc/dependency-check-report.json
+sonar.dependencyCheck.htmlReportPath=reports-dc/dependency-check-report.html</code></pre>
+          <ul class="checks">
+            <li>Opcional: reporte generado, propiedades descomentadas y análisis del paso 4 repetido.</li>
+            <li>Opcional: hallazgos en Issues, comparados con la auditoría del gestor.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-8">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 8</span>
+        <h2>Escaneo dinámico con ZAP</h2>
+      </div>
+      <p class="lead">
+        Ataca la aplicación mientras corre, para ver lo que el análisis
+        estático no ve. El resultado es <span class="kbd">reporte-zap.html</span>,
+        con las alertas altas y medias. Ese HTML se entrega junto al PDF. En
+        el paso 9, cada alerta se anota con su URL, su parámetro y la línea
+        de código que la causa, al lado de lo que ya registraron SonarQube y
+        Semgrep. SonarQube Community incorpora al dashboard los reportes que
+        señalan archivos del repositorio; un HTML de ZAP señala URLs, y por
+        eso se archiva con la entrega.
+      </p>
+      <div class="callout warn">
+        <p>
+          Solo contra tu aplicación, en tu máquina. El escaneo activo puede
+          crear o borrar datos. Usa una base de prueba. El tutorial de la
+          interfaz de ZAP, de Burp Suite y de la calculadora CVSS está en el
+          <a href="../dast/">laboratorio DAST</a>. Aquí va el escaneo por
+          Docker.
+        </p>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="p8-tipos">Tipos<span class="sub">Baseline, full, API</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p8-web">Web<span class="sub">Full scan</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p8-api">API<span class="sub">OpenAPI</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p8-rel">Relacionar<span class="sub">SAST y DAST</span></button>
+        </div>
+        <div class="panel" data-panel="p8-tipos" data-active="1">
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr><th>Escaneo</th><th>Qué hace</th><th>Qué encuentra</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Baseline</td><td>Solo observa las respuestas</td><td>Cabeceras, cookies, información expuesta</td></tr>
+                <tr><td>Full scan</td><td>Prueba los parámetros que encuentra</td><td>Lo que el baseline no puede ver porque no interactúa</td></tr>
+                <tr><td>API scan</td><td>Parte de una especificación OpenAPI</td><td>Lo mismo, orientado a una API</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="intro" style="margin-top: 14px">El baseline no sustituye al full scan. Si solo corres baseline, el reporte puede verse limpio sin estarlo. Levanta la aplicación y anota su URL. En Secure CRM es <span class="kbd">http://localhost:3000</span>.</p>
+        </div>
+        <div class="panel" data-panel="p8-web">
+          <pre><code>docker run --rm -v "$(pwd):/zap/wrk/:rw" -t ghcr.io/zaproxy/zaproxy:stable \
+  zap-full-scan.py -t http://host.docker.internal:3000 -r reporte-zap.html</code></pre>
+          <p class="intro" style="margin-top: 12px">Para el baseline, cambia <span class="kbd">zap-full-scan.py</span> por <span class="kbd">zap-baseline.py</span>. En Linux agrega <span class="kbd">--add-host=host.docker.internal:host-gateway</span> después de <span class="kbd">--rm</span>. Si las rutas piden login, configura un contexto con usuario; si no, solo verás lo público.</p>
+        </div>
+        <div class="panel" data-panel="p8-api">
+          <pre><code>docker run --rm -v "$(pwd):/zap/wrk/:rw" -t ghcr.io/zaproxy/zaproxy:stable \
+  zap-api-scan.py -t http://host.docker.internal:3000/openapi.json \
+  -f openapi -r reporte-zap.html</code></pre>
+          <p class="intro" style="margin-top: 12px">Si la API no tiene OpenAPI, el spider no encuentra endpoints: usa la interfaz de ZAP o Burp como proxy mientras recorres la aplicación. En Linux agrega <span class="kbd">--add-host=host.docker.internal:host-gateway</span> después de <span class="kbd">--rm</span>.</p>
+        </div>
+        <div class="panel" data-panel="p8-rel">
+          <p class="intro">Para cada alerta alta o media abre la evidencia y busca la línea en tu código. Los reportes de ZAP no se importan a SonarQube: sus hallazgos son URLs, no líneas. La comparación con SonarQube y Semgrep se escribe en el <a href="#paso-9">paso 9</a>.</p>
+          <ul class="checks">
+            <li>Baseline y full scan, o API scan, sobre tu aplicación local.</li>
+            <li>Reporte de ZAP guardado.</li>
+            <li>Cada alerta alta o media relacionada con su código.</li>
+            <li>Alertas altas y medias anotadas, listas para el paso 9.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-9">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 9 · cierra la Fase 1</span>
+        <h2>Clasificar y reportar</h2>
+      </div>
+      <p class="lead">
+        Ya están los cuatro resultados: issues de SonarQube, issues de Semgrep,
+        auditoría de dependencias y alertas de ZAP. El paso 5 enseñó a leer un
+        issue. Este paso junta todo en la plantilla y cierra la Fase 1.
+      </p>
+      <div data-tabs style="margin-top: 22px">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="p9-juntar">Juntar<span class="sub">Cuatro fuentes</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p9-cvss">CVSS v3.1<span class="sub">Vector</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p9-reporte">Plantilla<span class="sub">PDF</span></button>
+        </div>
+        <div class="panel" data-panel="p9-juntar" data-active="1">
+          <p class="intro">Una fila por hallazgo en la <a href="plantillas/reporte-hallazgos.md">plantilla</a>. La fuente es SonarQube, Semgrep, Auditoría, Dependency-Check o ZAP. Las decisiones son las del paso 5: corregir, aceptar o falso positivo. Accept y False Positive llevan el comentario que ya escribiste en SonarQube, o uno equivalente si la fuente es otra herramienta.</p>
+          <p class="intro">En cada hallazgo marcado corregir, escribe la corrección que aplicarías. En la Fase 1 es una propuesta. El código se cambia en el paso 10. Para ZAP, la fila cruza la alerta (URL y parámetro) con la línea que la causa y dice si SonarQube o Semgrep ya la habían visto.</p>
+          <ul class="checks">
+            <li>Las cuatro fuentes están en la misma tabla.</li>
+            <li>Cada fila tiene CWE, OWASP Top 10:2025 y decisión.</li>
+            <li>Dependencias con camino, alcanzabilidad y decisión.</li>
+            <li>Propuesta de corrección en cada hallazgo a corregir.</li>
+          </ul>
+        </div>
+        <div class="panel" data-panel="p9-cvss">
+          <p class="intro">Para cada vulnerabilidad real arma el vector en la <a href="https://www.first.org/cvss/calculator/3.1">calculadora CVSS v3.1</a> y explica cada métrica. El tutorial de las ocho métricas está en el <a href="../dast/#herramientas">laboratorio DAST</a>. Un riesgo aceptado y un falso positivo también se justifican, en su tabla aparte. El CVSS corresponde a las vulnerabilidades reales.</p>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr><th>Ejemplo</th><th>Vector</th><th>Puntaje</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Inyección SQL de solo lectura</td>
+                  <td><span class="k">CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N</span></td>
+                  <td>7.5 Alta</td>
+                </tr>
+                <tr>
+                  <td>XSS reflejado</td>
+                  <td><span class="k">CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N</span></td>
+                  <td>6.1 Media</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel" data-panel="p9-reporte">
+          <p class="intro">Copia la plantilla a tu repositorio, complétala y expórtala a PDF. Responde las preguntas de la sección 6. La de Sonar way y la del secreto salen de lo que viste en los pasos 2 y 5. Junto al PDF van las capturas del dashboard con <span class="k">projectVersion=fase1</span>, <span class="k">semgrep.sarif</span>, la salida de la auditoría y <span class="k">reporte-zap.html</span>.</p>
+          <ul class="checks">
+            <li>CVSS v3.1 de cada vulnerabilidad real.</li>
+            <li>Justificación de cada aceptado y cada falso positivo.</li>
+            <li>Comparación SAST y DAST, y la reflexión de qué vio cada herramienta.</li>
+            <li>PDF, capturas y reportes de herramientas listos para entregar.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="fase-2">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Enunciado</span>
+        <h2>Fase 2 · Corregir y demostrar</h2>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="f2-act">Actividades<span class="sub">100 %</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="f2-gate">Quality Gate<span class="sub">Passed</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="f2-entrega">Entrega<span class="sub">PDF y repo</span></button>
+        </div>
+        <div class="panel" data-panel="f2-act" data-active="1">
+          <p class="intro">Corrige lo que marcaste como “corregir”, demuestra cada corrección con una prueba automatizada y compara contra la línea base. El cómo está en el <a href="#paso-10">paso 10</a>, en este orden: un solo framework, prueba en rojo, corrección, prueba en verde, <span class="k">projectVersion=fase2</span>, y al final el reanálisis con SonarQube.</p>
+      <div class="tbl-wrap" style="margin-top: 22px">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Actividad</th><th>%</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>Corregir en el código las vulnerabilidades marcadas en la Fase 1 y actualizar o reemplazar las dependencias vulnerables alcanzables. Las correcciones van en el código, no solo en la configuración de las herramientas. Análisis con <span class="k">sonar.projectVersion=fase2</span>.</td>
+              <td>45</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Al menos una prueba por vulnerabilidad corregida. Falla antes de la corrección y pasa después. Cobertura importada a SonarQube, 70 % o más en el código nuevo.</td>
+              <td>35</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td>Repetir el escaneo de ZAP de la Fase 1 sobre la versión corregida y comparar las alertas.</td>
+              <td>5</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>La misma plantilla, con la columna Fase 2 y la tabla de correcciones: corrección, prueba y commit de cada una.</td>
+              <td>15</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+        </div>
+        <div class="panel" data-panel="f2-gate">
+          <p class="intro">El objetivo es el Quality Gate “Curso Desarrollo Seguro” en Passed. Si no llega a Passed, explica qué condición falla. La cobertura que cuenta es la del código nuevo, no la del proyecto completo. Un hallazgo que la herramienta sigue marcando después de corregirlo se marca False Positive solo si la prueba demuestra que la corrección funciona. Un commit por corrección, con un mensaje que nombre el hallazgo.</p>
+        </div>
+        <div class="panel" data-panel="f2-entrega">
+          <ul class="checks">
+            <li>Reporte final en PDF.</li>
+            <li>Capturas de New Code, Overall Code y el Quality Gate.</li>
+            <li>Reporte de ZAP antes y después.</li>
+            <li>Enlace al repositorio con las pruebas y los commits.</li>
+            <li>Presentación: qué encontró cada herramienta, qué corrigieron, cómo lo demostraron y qué aprendieron.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="paso-10">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Paso 10</span>
+        <h2>Corregir, probar y volver a analizar</h2>
+      </div>
+      <p class="lead">
+        Quality Gate en Passed, cobertura del código nuevo de al menos 70 %, y
+        menos hallazgos de seguridad que en la Fase 1, con evidencia del antes
+        y el después.
+      </p>
+      <div class="callout">
+        <div class="t">Secure CRM</div>
+        <p>pnpm, web en <span class="kbd">apps/web</span> y API en <span class="kbd">apps/api/src</span>. El repositorio todavía no trae pruebas. Abre una sola pestaña de framework: Jest en este proyecto. Vitest corresponde a un proyecto con Vite. pytest corresponde a Python. Las plantillas cuentan los archivos de <span class="kbd">src</span> aunque ninguna prueba los toque. Si el include no coincide con tus carpetas, la cobertura sale inflada.</p>
+      </div>
+      <div data-tabs style="margin-top: 18px">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="jest">Jest<span class="sub">Secure CRM</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="vitest">Vitest<span class="sub">Vite</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="pytest">pytest<span class="sub">Python</span></button>
+        </div>
+        <div class="panel" data-panel="jest" data-active="1">
+          <p class="intro">Copia <a href="plantillas/jest.config.js">jest.config.js</a> junto al <span class="kbd">package.json</span> de cada app. En Secure CRM instálalo con pnpm. El script <span class="kbd">test:coverage</span> se agrega en cada app: la raíz del repositorio no lo tiene.</p>
+          <pre><code>pnpm --filter @secure-crm/web add -D jest
+pnpm --filter @secure-crm/api add -D jest</code></pre>
+          <pre style="margin-top: 12px"><code>"test:coverage": "jest --coverage"</code></pre>
+          <div class="callout">
+            <p>La plantilla mira <span class="kbd">src/**</span>. En la API eso coincide. En la web cambia <span class="kbd">collectCoverageFrom</span> para incluir <span class="kbd">app</span>, <span class="kbd">components</span> y <span class="kbd">lib</span>. Descomenta esta línea en <span class="kbd">sonar-project.properties</span>, en la raíz del repositorio, antes del análisis. La plantilla front+API ya la trae comentada.</p>
+          </div>
+          <pre style="margin-top: 12px"><code>sonar.javascript.lcov.reportPaths=apps/web/coverage/lcov.info,apps/api/coverage/lcov.info</code></pre>
+          <p class="intro" style="margin-top: 12px">Jest escribe en <span class="kbd">lcov.info</span> rutas relativas a la app, por ejemplo <span class="kbd">app/page.tsx</span> o <span class="kbd">src/index.ts</span>. SonarQube, lanzado desde la raíz, indexa <span class="kbd">apps/web/...</span> y <span class="kbd">apps/api/src/...</span>. Si el log dice que no pudo resolver rutas del LCOV, la cobertura queda en 0 % aunque la propiedad esté bien. Abre el <span class="kbd">lcov.info</span> y confirma que cada <span class="kbd">SF:</span> coincide con un archivo bajo <span class="kbd">sonar.sources</span>. Si falta el prefijo, antepone <span class="kbd">apps/web/</span> o <span class="kbd">apps/api/</span>.</p>
+        </div>
+        <div class="panel" data-panel="vitest">
+          <p class="intro">Para un proyecto con Vite. La versión de <span class="k">@vitest/coverage-v8</span> tiene que ser exactamente la de <span class="k">vitest</span>. Si no coinciden, las pruebas pasan y la cobertura falla. Copia <a href="plantillas/vitest.config.ts">vitest.config.ts</a> a la raíz del paquete y ajusta <span class="kbd">include</span> a tus carpetas.</p>
+          <pre><code>pnpm list vitest
+pnpm add -D @vitest/coverage-v8@LA_MISMA_VERSION</code></pre>
+          <pre style="margin-top: 12px"><code>"test:coverage": "vitest run --coverage"</code></pre>
+          <p class="intro" style="margin-top: 12px">Descomenta esta línea en <span class="kbd">sonar-project.properties</span> antes del análisis. La plantilla JS ya la trae comentada. Corre <span class="kbd">pnpm test:coverage</span> en la carpeta donde agregaste el script, para que exista <span class="kbd">coverage/lcov.info</span>.</p>
+          <pre style="margin-top: 12px"><code>sonar.javascript.lcov.reportPaths=coverage/lcov.info</code></pre>
+        </div>
+        <div class="panel" data-panel="pytest">
+          <p class="intro">Copia <a href="plantillas/.coveragerc">.coveragerc</a> a la raíz.</p>
+          <pre><code>python3 -m pip install pytest pytest-cov
+pytest --cov --cov-report=xml</code></pre>
+          <p class="intro" style="margin-top: 12px">Descomenta esta línea en <span class="kbd">sonar-project.properties</span> antes del análisis. La plantilla Python ya la trae comentada. <span class="kbd">relative_files = True</span> en <span class="kbd">.coveragerc</span> deja las rutas del XML como las indexa SonarQube.</p>
+          <pre style="margin-top: 12px"><code>sonar.python.coverage.reportPaths=coverage.xml</code></pre>
+        </div>
+      </div>
+      <p class="intro" style="margin-top: 22px">Con el framework elegido, el trabajo sigue este orden.</p>
+      <div data-tabs style="margin-top: 14px">
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="p10-fix">Corregir<span class="sub">Rojo y verde</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p10-ver">Versión<span class="sub">fase2</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="p10-rerun">Reanalizar<span class="sub">Sonar al final</span></button>
+        </div>
+        <div class="panel" data-panel="p10-fix" data-active="1">
+          <div class="steps">
+            <div class="step"><div class="n"></div><div>
+              <h3>Prueba en rojo</h3>
+              <p>Escribe una prueba que ejercite el flujo del hallazgo. Debe fallar mientras la vulnerabilidad siga en el código.</p>
+            </div></div>
+            <div class="step"><div class="n"></div><div>
+              <h3>Corrección</h3>
+              <p>Cambia el código: consulta parametrizada, salida codificada, lista de orígenes permitidos, verificación de firma, o el arreglo que corresponda.</p>
+            </div></div>
+            <div class="step"><div class="n"></div><div>
+              <h3>Prueba en verde y commit</h3>
+              <p>La misma prueba ahora pasa. Un commit por corrección, con un mensaje que nombre el hallazgo. Para dependencias, actualiza o reemplaza y repite la auditoría del paso 7.</p>
+            </div></div>
+          </div>
+          <pre><code>it("describe el hallazgo que estás cerrando", async () => {
+  const respuesta = await request(app).get("/ruta").query({ q: valorDePrueba });
+  expect(respuesta.status).toBe(200);
+  expect(JSON.stringify(respuesta.body)).not.toContain("dato-sensible");
+});</code></pre>
+        </div>
+        <div class="panel" data-panel="p10-ver">
+          <p class="intro">Cuando las correcciones ya están en commits, cambia la versión una sola vez en <span class="kbd">sonar-project.properties</span>, justo antes del análisis final. En el mismo archivo, descomenta la propiedad de cobertura de la pestaña de tu framework. SonarQube no ejecuta pruebas: solo lee el reporte. Si esa línea sigue comentada, la cobertura queda en 0 %.</p>
+          <pre><code>sonar.projectVersion=fase2</code></pre>
+        </div>
+        <div class="panel" data-panel="p10-rerun">
+          <p class="intro">SonarQube lee los reportes de las demás herramientas, así que va al final. La propiedad de cobertura ya tiene que estar descomentada. Mientras la versión siga en <span class="kbd">fase2</span>, New Code se compara contra la Fase 1. En Secure CRM, <span class="kbd">test:coverage</span> se corre en cada app: la raíz no tiene ese script.</p>
+          <pre><code># 1. Pruebas y cobertura, en cada app
+pnpm --filter @secure-crm/web test:coverage
+pnpm --filter @secure-crm/api test:coverage
+# Un solo paquete: pnpm test:coverage en la carpeta del script
+# Python: pytest --cov --cov-report=xml
+
+# 2. Semgrep
+semgrep scan --config p/default --metrics=off --sarif -o semgrep.sarif
+
+# 3. Auditoría de dependencias
+pnpm audit --prod
+
+# 4. Opcional: Dependency-Check, el mismo comando del paso 7
+
+# 5. SonarQube
+npx @sonar/scan -Dsonar.token=$SONAR_TOKEN
+
+# 6. ZAP, el mismo comando del paso 8</code></pre>
+          <div class="tbl-wrap" style="margin-top: 16px">
+            <table>
+              <thead>
+                <tr><th>Dónde</th><th>Qué revisar</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>New Code</td><td>Cobertura de al menos 70 % y cero issues nuevos</td></tr>
+                <tr><td>Overall Code</td><td>Cuántos issues de seguridad bajaron respecto de la Fase 1</td></tr>
+                <tr><td>Quality Gate</td><td>Passed</td></tr>
+                <tr><td>ZAP</td><td>Repite el paso 8 y compara las alertas con el reporte de la Fase 1</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="callout">
+            <p>Si una herramienta sigue marcando algo que ya corregiste, verifica con la prueba que la corrección funciona y márcalo False Positive con su justificación.</p>
+          </div>
+        </div>
+      </div>
+      <ul class="checks">
+        <li>Un solo framework, el de tu stack.</li>
+        <li>Una prueba por vulnerabilidad corregida, en rojo y luego en verde.</li>
+        <li><span class="k">sonar.projectVersion=fase2</span> después de los commits de corrección.</li>
+        <li>Propiedad de cobertura descomentada en <span class="k">sonar-project.properties</span> e importada. Si usas Vitest, la misma versión exacta.</li>
+        <li>Dependencias actualizadas y auditoría repetida.</li>
+        <li>Herramientas en orden, SonarQube al final, y ZAP repetido.</li>
+        <li>New Code con cobertura de al menos 70 % y Quality Gate en Passed.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="doc" id="checklist">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Cierre</span>
+        <h2>Checklist</h2>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="ck-1">Fase 1<span class="sub">Análisis</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="ck-2">Fase 2<span class="sub">Corrección</span></button>
+        </div>
+        <div class="panel" data-panel="ck-1" data-active="1">
+          <ul class="checks">
+            <li>SonarQube corriendo y clave de admin cambiada.</li>
+            <li>Quality Gate “Curso Desarrollo Seguro” como predeterminado.</li>
+            <li>Plugin Dependency-Check, si vas por el extra.</li>
+            <li>Token en variable de entorno, no en archivos.</li>
+            <li><span class="k">projectVersion=fase1</span> y exclusiones.</li>
+            <li>Semgrep ejecutado e importado.</li>
+            <li>Auditoría priorizada por riesgo real.</li>
+            <li>ZAP: baseline y full scan sobre tu aplicación local.</li>
+            <li>Paso 9: las cuatro fuentes con CWE, OWASP y decisión.</li>
+            <li>Reporte con CVSS v3.1 de cada vulnerabilidad real.</li>
+          </ul>
+        </div>
+        <div class="panel" data-panel="ck-2">
+          <ul class="checks">
+            <li>Un solo framework y una prueba por vulnerabilidad corregida.</li>
+            <li><span class="k">projectVersion=fase2</span> después de corregir.</li>
+            <li>Cobertura importada; código nuevo de al menos 70 %.</li>
+            <li>Dependencias actualizadas y auditoría repetida.</li>
+            <li>ZAP repetido sobre la versión corregida.</li>
+            <li>Quality Gate “Curso Desarrollo Seguro” en Passed.</li>
+            <li>Reporte con el antes y el después.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="problemas">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Si algo falla</span>
+        <h2>Problemas frecuentes</h2>
+      </div>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="pr-sonar">SonarQube<span class="sub">Docker</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="pr-scan">Escáner<span class="sub">Token y análisis</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="pr-resto">Resto<span class="sub">Semgrep, deps, ZAP</span></button>
+        </div>
+        <div class="panel" data-panel="pr-sonar" data-active="1">
+      <div class="tbl-wrap" style="margin-top: 12px">
+        <table>
+          <thead><tr><th>Síntoma</th><th>Qué hacer</th></tr></thead>
+          <tbody>
+            <tr><td>Read-only file system y SonarQube se detiene</td><td>Usa el <a href="docker-compose.yml">docker-compose.yml</a> de esta carpeta.</td></tr>
+            <tr><td>El contenedor se reinicia</td><td>Sube la memoria de Docker a 4 GB o más.</td></tr>
+            <tr><td><span class="k">vm.max_map_count</span> en Linux</td><td><span class="k">sudo sysctl -w vm.max_map_count=524288</span></td></tr>
+            <tr><td>El plugin dice Install Pending</td><td>Restart Server, o <span class="k">docker compose restart sonarqube</span>.</td></tr>
+            <tr><td>El Marketplace no carga</td><td>Instala el <span class="k">.jar</span> a mano, como en el paso 2.</td></tr>
+            <tr><td>El puerto 9000 está ocupado</td><td>Cambia <span class="k">"9000:9000"</span> por <span class="k">"9001:9000"</span> y abre el puerto 9001.</td></tr>
+          </tbody>
+        </table>
+      </div>
+        </div>
+        <div class="panel" data-panel="pr-scan">
+      <div class="tbl-wrap" style="margin-top: 12px">
+        <table>
+          <thead><tr><th>Síntoma</th><th>Qué hacer</th></tr></thead>
+          <tbody>
+            <tr><td>401 / Not authorized</td><td>Vuelve a exportar <span class="k">SONAR_TOKEN</span> en esa terminal.</td></tr>
+            <tr><td>Error de motor o ESM con npx</td><td>Node menor a 22.12. Usa Docker o el CLI.</td></tr>
+            <tr><td>El escáner Docker no conecta</td><td>Usa <span class="k">host.docker.internal</span>, no localhost. En Linux agrega <span class="k">--add-host</span>.</td></tr>
+            <tr><td>Blocker por token de SonarQube</td><td>Revoca el token, genera otro y quítalo del archivo.</td></tr>
+            <tr><td>Passed en el primer análisis, con vulnerabilidades</td><td>Estás en “Sonar way”. Crea el gate “Curso Desarrollo Seguro” y márcalo como Default.</td></tr>
+            <tr><td>Un archivo no aparece</td><td>Busca “Failed to parse” en el log: SonarQube saltó un error de sintaxis.</td></tr>
+            <tr><td>Analizó <span class="k">node_modules</span></td><td>Revisa <span class="k">sonar.exclusions</span>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+        </div>
+        <div class="panel" data-panel="pr-resto">
+      <div class="tbl-wrap" style="margin-top: 12px">
+        <table>
+          <thead><tr><th>Síntoma</th><th>Qué hacer</th></tr></thead>
+          <tbody>
+            <tr><td>Semgrep analiza menos archivos</td><td>Solo ve archivos con commit. Haz commit y vuelve a correrlo.</td></tr>
+            <tr><td>Semgrep no aparece en SonarQube</td><td>Agrega <span class="k">sonar.sarifReportPaths=semgrep.sarif</span> y reanaliza.</td></tr>
+            <tr><td><span class="k">npm ERR! code ENOLOCK</span></td><td>El proyecto no es de npm. Usa el comando de tu gestor.</td></tr>
+            <tr><td>Dependency-Check: la ruta de salida no existe</td><td><span class="k">mkdir -p reports-dc</span> y <span class="k">--out "$(pwd)/reports-dc"</span>.</td></tr>
+            <tr><td>Dependency-Check tarda 20 minutos</td><td>Es la primera descarga del NVD. Las siguientes son rápidas.</td></tr>
+            <tr><td>Dependency-Check no aparece en SonarQube</td><td>Instala el plugin del paso 2, descomenta <span class="k">sonar.dependencyCheck.jsonReportPath</span> y reanaliza.</td></tr>
+            <tr><td><span class="k">fetchCache</span> al medir cobertura</td><td><span class="k">@vitest/coverage-v8</span> y <span class="k">vitest</span> tienen versiones distintas.</td></tr>
+            <tr><td>Coverage 0 % en SonarQube</td><td>Descomenta la propiedad del paso 10 en <span class="k">sonar-project.properties</span>, genera <span class="k">lcov.info</span> o <span class="k">coverage.xml</span> y reanaliza. En un monorepo, cada ruta <span class="k">SF:</span> del LCOV tiene que coincidir con un archivo bajo <span class="k">sonar.sources</span>. Si dice <span class="k">app/page.tsx</span> y Sonar indexa <span class="k">apps/web/app/page.tsx</span>, antepone <span class="k">apps/web/</span>.</td></tr>
+            <tr><td>Cobertura sospechosamente alta</td><td>Usa las plantillas: deben incluir los archivos que las pruebas no tocan.</td></tr>
+            <tr><td>El gate no muestra cobertura, o falla antes de la Fase 2</td><td>Antes de importar un reporte, es normal: la condición mira el código nuevo. Ese periodo existe desde el primer análisis con Previous version. Si después importas cobertura y el código nuevo queda por debajo del 70 %, el gate falla aunque <span class="k">projectVersion</span> siga en <span class="k">fase1</span>. En un ensayo, eso ocurrió con 7.9 %. La nota de la Fase 2 mira el código nuevo después de pasar a <span class="k">fase2</span>.</td></tr>
+            <tr><td>ZAP no marca inyección ni XSS</td><td>Corriste solo el baseline. Usa full scan o API scan, o el proxy del <a href="../dast/">laboratorio DAST</a>.</td></tr>
+            <tr><td>ZAP no ve la API</td><td>Una API no tiene enlaces para el spider. Usa OpenAPI o recorre la app con el proxy.</td></tr>
+            <tr><td>ZAP no alcanza la app en Linux</td><td>Agrega <span class="k">--add-host=host.docker.internal:host-gateway</span>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc" id="plantillas">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">Archivos</span>
+        <h2>Plantillas</h2>
+      </div>
+      <p class="lead" style="margin-bottom: 18px">
+        Copia la que corresponda a la raíz de tu proyecto. No renombres el
+        reporte SARIF ni pongas secretos dentro de estos archivos.
+      </p>
+      <div data-tabs>
+        <div class="tabs" role="tablist">
+          <button class="tab" role="tab" aria-selected="true" data-tab="pl-sonar">SonarQube<span class="sub">Análisis</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="pl-test">Pruebas<span class="sub">Cobertura</span></button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="pl-rep">Reporte<span class="sub">Dos fases</span></button>
+        </div>
+        <div class="panel" data-panel="pl-sonar" data-active="1">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Archivo</th><th>Para qué</th></tr></thead>
+              <tbody>
+                <tr><td><a href="docker-compose.yml">docker-compose.yml</a></td><td>SonarQube y PostgreSQL</td></tr>
+                <tr><td><a href="plantillas/sonar-project.js.properties">sonar-project.js.properties</a></td><td>JavaScript o TypeScript</td></tr>
+                <tr><td><a href="plantillas/sonar-project.front-api.properties">sonar-project.front-api.properties</a></td><td>Front y API en el mismo repo</td></tr>
+                <tr><td><a href="plantillas/sonar-project.python.properties">sonar-project.python.properties</a></td><td>Python</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel" data-panel="pl-test">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Archivo</th><th>Para qué</th></tr></thead>
+              <tbody>
+                <tr><td><a href="plantillas/vitest.config.ts">vitest.config.ts</a></td><td>Cobertura con Vitest</td></tr>
+                <tr><td><a href="plantillas/jest.config.js">jest.config.js</a></td><td>Cobertura con Jest</td></tr>
+                <tr><td><a href="plantillas/.coveragerc">.coveragerc</a></td><td>Cobertura con pytest</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel" data-panel="pl-rep">
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Archivo</th><th>Para qué</th></tr></thead>
+              <tbody>
+                <tr><td><a href="plantillas/reporte-hallazgos.md">reporte-hallazgos.md</a></td><td>Plantilla del reporte de las dos fases</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="cta" style="margin-top: 28px">
+        <div>
+          <h3 style="font-size: 1.2rem">El otro laboratorio</h3>
+          <p>ZAP, Burp Suite y CVSS, con el tablero de Secure CRM, están en la página DAST.</p>
+        </div>
+        <a class="btn btn-primary" href="../dast/">Abrir laboratorio DAST</a>
+      </div>
+    </div>
+  </section>
+      <div class="docs-pager">
+        <button type="button" data-dir="-1">Anterior</button>
+        <button type="button" data-dir="1">Siguiente</button>
+      </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap frow">
+    <div class="fbrand">
+      <img src="../brand/uvg.png" alt="Universidad del Valle de Guatemala" />
+      <span>Desarrollo de Software Seguro</span>
+    </div>
+    <span><a href="../">Inicio</a> · <a href="../dast/">Laboratorio DAST</a></span>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll("[data-tabs]").forEach((group) => {
+    const tabs = group.querySelectorAll(":scope > .tabs > .tab");
+    const panels = group.querySelectorAll(":scope > .panel");
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((item) => item.setAttribute("aria-selected", String(item === tab)));
+        panels.forEach((panel) =>
+          panel.setAttribute("data-active", panel.dataset.panel === tab.dataset.tab ? "1" : "0"),
+        );
+      });
+    });
+  });
+
+  const docOrder = [...document.querySelectorAll(".docs-nav button[data-doc]")].map(
+    (button) => button.dataset.doc,
+  );
+  const pagerButtons = document.querySelectorAll(".docs-pager button");
+
+  function showDoc(id, scroll) {
+    if (!docOrder.includes(id)) id = "reglas";
+    document.querySelectorAll(".doc").forEach((section) => {
+      section.dataset.active = section.id === id ? "1" : "0";
+    });
+    document.querySelectorAll(".docs-nav button[data-doc]").forEach((button) => {
+      const on = button.dataset.doc === id;
+      button.setAttribute("aria-selected", String(on));
+      if (on && scroll) button.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+    const index = docOrder.indexOf(id);
+    const previous = docOrder[index - 1];
+    const next = docOrder[index + 1];
+    pagerButtons[0].hidden = !previous;
+    pagerButtons[1].hidden = !next;
+    if (previous) {
+      pagerButtons[0].dataset.doc = previous;
+      pagerButtons[0].textContent = "Anterior · " + labelFor(previous);
+    }
+    if (next) {
+      pagerButtons[1].dataset.doc = next;
+      pagerButtons[1].textContent = "Siguiente · " + labelFor(next);
+    }
+    if (location.hash !== "#" + id) {
+      if (scroll) history.pushState(null, "", "#" + id);
+      else history.replaceState(null, "", "#" + id);
+    }
+    if (scroll) {
+      const docs = document.querySelector(".docs");
+      const top = docs.getBoundingClientRect().top + window.scrollY - 64;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+  }
+
+  function labelFor(id) {
+    const button = document.querySelector(`.docs-nav button[data-doc="${id}"]`);
+    return button ? button.textContent.trim() : id;
+  }
+
+  document.querySelector(".docs-nav").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-doc]");
+    if (!button) return;
+    showDoc(button.dataset.doc, true);
+  });
+
+  document.querySelector(".docs-pager").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-doc]");
+    if (!button) return;
+    showDoc(button.dataset.doc, true);
+  });
+
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest("a[href^='#']");
+    if (!link) return;
+    const id = link.getAttribute("href").slice(1);
+    if (!docOrder.includes(id)) return;
+    event.preventDefault();
+    showDoc(id, true);
+  });
+
+  window.addEventListener("hashchange", () => {
+    showDoc(location.hash.slice(1), false);
+  });
+
+  showDoc(location.hash.slice(1) || "reglas", false);
+</script>
+</body>
+</html>

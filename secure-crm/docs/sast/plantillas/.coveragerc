@@ -1,0 +1,7 @@
+# Copia este archivo a la raíz del proyecto Python
+# Uso: pytest --cov --cov-report=xml   → genera coverage.xml para SonarQube
+[run]
+# Carpeta de tu código; cuenta TODOS sus archivos, aunque no tengan pruebas
+source = src
+# Rutas relativas: necesarias para que SonarQube encuentre los archivos
+relative_files = True

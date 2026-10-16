@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Secure CRM · Laboratorios de software seguro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="assets/site.css" />
+  </head>
+  <body>
+    <header>
+      <div class="wrap nav">
+        <a class="brand" href="./">
+          <img class="logo" src="brand/logo.svg" alt="Secure CRM" />
+          <span class="sep" aria-hidden="true"></span>
+          <img
+            class="logo-uvg"
+            src="brand/uvg.png"
+            alt="Universidad del Valle de Guatemala"
+          />
+        </a>
+        <nav class="navlinks" aria-label="Secciones del sitio">
+          <a href="./" aria-current="page">Inicio</a>
+          <a href="dast/">DAST</a>
+          <a href="sast/">SAST</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap">
+          <div class="grid">
+            <div>
+              <span class="eyebrow">Universidad del Valle de Guatemala</span>
+              <h1>
+                Un CRM pequeño para practicar
+                <span class="u">software seguro</span>.
+              </h1>
+              <p class="lead">
+                Secure CRM es un sistema de tickets intencionalmente vulnerable.
+                Sirve como campo de práctica, para que puedas leer el código,
+                escanearlo y corregirlo simulando un proyecto real.
+              </p>
+              <div class="btns">
+                <a class="btn btn-primary" href="dast/">Laboratorio DAST</a>
+                <a class="btn btn-ghost" href="sast/">Laboratorio SAST</a>
+              </div>
+            </div>
+            <dl class="aside">
+              <dt>Aplicación</dt>
+              <dd>Web en el puerto 3000 · API en el puerto 4000 · SQLite.</dd>
+              <dt>Roles</dt>
+              <dd>admin, agent y viewer.</dd>
+              <dt>Curso</dt>
+              <dd>Desarrollo de Software Seguro.</dd>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section id="que-es">
+        <div class="wrap">
+          <div class="sec-head">
+            <span class="eyebrow">El proyecto</span>
+            <h2>Qué es Secure CRM</h2>
+          </div>
+          <p class="lead">
+            Un monorepo con dos aplicaciones. La web es Next.js. La API es
+            Express con TypeScript y guarda los datos en SQLite. Comparten tipos
+            en un paquete común.
+          </p>
+          <div class="paths" style="margin-top: 22px">
+            <article class="card">
+              <h3>Qué puedes hacer en la app</h3>
+              <p>
+                Iniciar sesión con JWT, ver un tablero, y crear, buscar, editar
+                y eliminar tickets. Un administrador también gestiona usuarios y
+                roles. La rama principal se mantiene vulnerable a propósito: las
+                correcciones van en tu propia rama.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Para qué sirve en el curso</h3>
+              <p>
+                Es un blanco local para DAST, SAST, análisis de dependencias y
+                pruebas. También puedes ignorarlo y aplicar las mismas guías a
+                cualquier otro proyecto que corra en tu máquina.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="levantar">
+        <div class="wrap">
+          <div class="sec-head">
+            <span class="eyebrow">Arranque</span>
+            <h2>Cómo levantarlo</h2>
+          </div>
+          <p class="lead" style="margin-bottom: 22px">
+            Necesitas Node 20 o superior y pnpm, o Docker. Cuando termine, abre
+            la web en el puerto 3000.
+          </p>
+          <div class="install">
+            <div>
+              <h3>Opción A · Node + pnpm</h3>
+              <pre><code>pnpm install
+pnpm seed
+pnpm dev
+# Web  → http://localhost:3000
+# API  → http://localhost:4000</code></pre>
+            </div>
+            <div>
+              <h3>Opción B · Docker</h3>
+              <pre><code>docker compose up --build
+# Web  → http://localhost:3000
+# API  → http://localhost:4000</code></pre>
+            </div>
+          </div>
+          <div class="callout">
+            <p>
+              <span class="kbd">pnpm seed</span> borra y vuelve a crear usuarios
+              y tickets. Si el puerto 4000 está ocupado, cambia
+              <span class="kbd">API_PORT</span> y
+              <span class="kbd">NEXT_PUBLIC_API_URL</span> juntos. El ejemplo
+              está en <span class="kbd">.env.example</span>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="cuentas">
+        <div class="wrap">
+          <div class="sec-head">
+            <span class="eyebrow">Datos de prueba</span>
+            <h2>Cuentas de semilla</h2>
+          </div>
+          <p class="lead" style="margin-bottom: 18px">
+            Úsalas solo en tu instancia local de Secure CRM.
+          </p>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Rol</th>
+                  <th>Usuario</th>
+                  <th>Contraseña</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Administrador</td>
+                  <td><span class="k">admin</span></td>
+                  <td><span class="k">Admin123!</span></td>
+                </tr>
+                <tr>
+                  <td>Agente</td>
+                  <td><span class="k">jperez</span></td>
+                  <td><span class="k">Password1</span></td>
+                </tr>
+                <tr>
+                  <td>Agente</td>
+                  <td><span class="k">mlopez</span></td>
+                  <td><span class="k">qwerty123</span></td>
+                </tr>
+                <tr>
+                  <td>Solo lectura</td>
+                  <td><span class="k">viewer</span></td>
+                  <td><span class="k">viewer</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="caminos">
+        <div class="wrap">
+          <div class="sec-head">
+            <span class="eyebrow">Dos caminos</span>
+            <h2>Este proyecto, o el tuyo</h2>
+          </div>
+          <div class="paths">
+            <article class="card">
+              <h3>Usar Secure CRM</h3>
+              <p>
+                Clona este repositorio, levántalo y apunta las herramientas a
+                <span class="kbd">localhost:3000</span> y
+                <span class="kbd">localhost:4000</span>. El tablero de diez
+                retos de la página DAST describe fallos de esta aplicación.
+              </p>
+              <div class="btns">
+                <a class="btn btn-primary" href="dast/"
+                  >Ir al laboratorio DAST</a
+                >
+              </div>
+            </article>
+            <article class="card">
+              <h3>Traer tu proyecto</h3>
+              <p>
+                Las mismas guías valen para cualquier repositorio git que puedas
+                ejecutar en local. SonarQube, Semgrep y la auditoría de
+                dependencias no dependen de Secure CRM. Las plantillas cubren
+                JavaScript, TypeScript, un front con API, y Python.
+              </p>
+              <div class="btns">
+                <a class="btn btn-ghost" href="sast/">Ir al laboratorio SAST</a>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="alcance">
+        <div class="wrap">
+          <div class="sec-head">
+            <span class="eyebrow">Alcance</span>
+            <h2>Solo en tu máquina</h2>
+          </div>
+          <div class="decl">
+            <h3>Antes de escanear</h3>
+            <ul>
+              <li>
+                Analiza y prueba únicamente tu instancia local o un entorno que
+                tengas autorizado.
+              </li>
+              <li>
+                No despliegues Secure CRM en producción ni apuntes las
+                herramientas a sistemas de terceros.
+              </li>
+              <li>
+                No publiques tokens, claves ni contraseñas en el repositorio, en
+                capturas ni en el reporte.
+              </li>
+              <li class="fill">
+                El mapa de fallos y las correcciones de referencia no forman
+                parte del material del estudiante.
+              </li>
+            </ul>
+            <blockquote>
+              La rama principal sigue vulnerable. Tus correcciones van en tu
+              rama y en el pull request.
+            </blockquote>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <div class="cta">
+            <div>
+              <h3 style="font-size: 1.2rem">Elige el laboratorio</h3>
+              <p>
+                DAST observa la aplicación en ejecución. SAST y el análisis de
+                dependencias leen el código y las librerías.
+              </p>
+            </div>
+            <div class="btns" style="margin-top: 0">
+              <a class="btn btn-primary" href="dast/">DAST</a>
+              <a class="btn btn-ghost" href="sast/">SAST</a>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap frow">
+        <div class="fbrand">
+          <img src="brand/uvg.png" alt="Universidad del Valle de Guatemala" />
+          <span>Desarrollo de Software Seguro</span>
+        </div>
+        <span><a href="dast/">DAST</a> · <a href="sast/">SAST</a></span>
+      </div>
+    </footer>
+  </body>
+</html>
