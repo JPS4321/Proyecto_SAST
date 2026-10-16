@@ -10,6 +10,7 @@
 | `899aa53` | 2026‑10‑16 01:03 | Se agregan los reportes de `analisis-seguridad/despues/` (SonarQube, ZAP, Semgrep, audit) |
 | `fa9b177` | 2026‑10‑16 08:52 | Correcciones de código, configuración, dependencias, pruebas automatizadas y reportes `antes/` |
 | `f7c9be4` | 2026‑10‑16 09:19 | Actualización de `despues/audit.json`, `despues/reporte-zap-api-baseline.html` y `despues/reporte-zap-baseline.html` |
+| *(sin commit al redactar esta versión)* | 2026‑10‑16 09:41–10:05 | `sonar-project.properties`: se vuelve a incluir `docs/` y la importación del SARIF de Semgrep (09:41); nuevo `semgrep.sarif` (09:45); análisis de SonarQube (09:51); exportación de issues abiertos, métricas y Quality Gate a `despues/` (10:02–10:03); PDF regenerado con `generar_reporte_sonarqube.py` actualizado (10:05) |
 
 **Herramientas:** SonarQube (SAST + importación de SARIF), Semgrep OSS (SAST), OWASP ZAP (DAST), `pnpm audit` (SCA).
 
@@ -27,7 +28,7 @@
 
 ```
 apps/api:  Test Files 7 passed (7) — Tests 66 passed | 5 expected fail (71)
-apps/web:  Test Files 5 passed (5) — Tests 33 passed (33)
+apps/web:  Test Files 6 passed (6) — Tests 40 passed (40)   (tras la corrección de cabeceras R‑08; antes 5 archivos / 33 pruebas)
 ```
 
 Los **5 "expected fail"** son pruebas marcadas con `test.fails` que documentan vulnerabilidades que **siguen presentes** (JWT sin verificación de firma y control de acceso roto). Se detallan en la sección de riesgos residuales.
@@ -46,23 +47,37 @@ En este informe se distinguen tres categorías:
 
 Los análisis "antes" y "después" **no se ejecutaron con alcances ni configuraciones idénticos**. Esto debe tenerse en cuenta al interpretar las reducciones:
 
-1. **SonarQube cambió de alcance.** En `fa9b177` se modificó `sonar-project.properties`:
-   - `sonar.sources=.` → `sonar.sources=apps,packages`: **la carpeta `docs/` dejó de analizarse**. 13 de los 41 hallazgos "antes" estaban en `docs/`; su desaparición en el "después" no es, por sí sola, prueba de corrección (aunque el código de `docs/` sí se modificó, ver §M).
-   - Se **eliminó** `sonar.sarifReportPaths=semgrep.sarif`: el análisis "después" **ya no importa los resultados de Semgrep**. Los 3 hallazgos `external_Semgrep OSS:*` del "antes" no pueden reaparecer en SonarQube por diseño; su verificación debe hacerse con el SARIF de Semgrep directamente (que sí reporta 0 resultados).
-   - Se agregaron `sonar.tests`, exclusión de `apps/*/test/**` y cobertura (`lcov`).
-2. **Momento del análisis de SonarQube.** El reporte "después" se generó el 16/10/2026 a las 01:01, *antes* del commit de las correcciones (08:52). Por tanto se analizó el árbol de trabajo de ese momento, que no puede vincularse con certeza a un commit concreto.
+1. **SonarQube: alcance y versiones del análisis "después".** Hubo dos análisis "después" con configuraciones distintas:
+
+   | Parámetro | Antes | Después — 1.er análisis (16/10 01:01) | Después — 2.º análisis (16/10 09:51) |
+   |---|---|---|---|
+   | `sonar.sources` | `.` | `apps,packages` (**sin `docs/`**) | `apps,packages,docs` |
+   | `sonar.sarifReportPaths` (Semgrep) | `semgrep.sarif` | **No** (se había eliminado) | `semgrep.sarif` (**restaurado**) |
+   | `sonar.tests` / cobertura `lcov` | No | Sí | Sí |
+   | Issues abiertos exportados | 41 | 0 | 0 (exportación con `resolved=false`) |
+
+   - Con el 2.º análisis, el alcance vuelve a ser comparable con el "antes" en lo esencial (`apps`, `packages`, `docs` y hallazgos de Semgrep). La diferencia restante es que `sonar.sources=.` también abarcaba archivos de la raíz (p. ej. `docker-compose.yml`, `generar_reporte_sonarqube.py`), aunque en el "antes" ninguno de los 41 hallazgos estaba en ellos.
+   - **Inclusión de `docs/` y del SARIF en el 2.º análisis — confirmada:** el autor del proyecto confirmó el 16/10/2026 que el análisis de las 09:51 incluyó el directorio `docs/` y la importación del SARIF de Semgrep. La configuración y los registros disponibles lo respaldan:
+     - `sonar-project.properties` contiene `sonar.sources=apps,packages,docs` y `sonar.sarifReportPaths=semgrep.sarif`. Su última modificación (09:41:38) es **anterior** a la ejecución del scanner registrada en `.scannerwork/report-task.txt` (09:51:36; `ceTaskId=f7ea3491-ca09-4143-a589-47c496ade4ff`, SonarQube 26.9.0.129388).
+     - `semgrep.sarif` (raíz) existía desde las 09:45:33, también antes del análisis, y es idéntico byte a byte a `despues/semgrep.sarif`.
+     - Fuente de la confirmación: la declaración del autor, junto con la configuración y las marcas de tiempo anteriores. El repositorio no guarda el log de `sonar-scanner`; la tarea del servidor puede consultarse con token en `api/ce/task?id=f7ea3491-ca09-4143-a589-47c496ade4ff`.
+   - **Vínculo exportación ↔ análisis:** las exportaciones de `despues/` (10:02–10:03) son posteriores a la última ejecución registrada del scanner (09:51), por lo que corresponden previsiblemente a ese análisis. Los JSON no registran el identificador del análisis, así que esto también es una inferencia.
+   - El SARIF importado contiene **0 resultados**, por lo que la importación no puede aportar hallazgos `external_Semgrep`. Esto es coherente con que los 3 hallazgos de Semgrep del "antes" ya no existan.
+   - **Exportación intermedia descartada:** una exportación previa (09:56) se hizo sin filtrar por estado. Informaba `total: 10842` y contenía 500 issues, **todos `CLOSED/FIXED`** (496 de análisis anteriores sobre los HTML de `analisis-seguridad/antes/`, sobre todo `Web:S1827`, y 4 de `apps/api/src/routes/tickets.ts`). Esos 10 842 issues son **históricos y cerrados**; no son vulnerabilidades actuales. Esa exportación y su PDF fueron sustituidos por la exportación con `resolved=false` y el PDF regenerado.
+   - **Cobertura:** los `lcov.info` que importó el 2.º análisis se generaron el 16/10 a las 00:59 (`apps/api/coverage`, `apps/web/coverage`), antes del commit `fa9b177`. La cobertura informada (83.5 %) corresponde a esa ejecución de pruebas.
+2. **Momento del 1.er análisis de SonarQube.** Se generó el 16/10/2026 a las 01:01, *antes* del commit de las correcciones (08:52). Por tanto se analizó el árbol de trabajo de ese momento, que no puede vincularse con certeza a un commit concreto. El 2.º análisis (09:51) sí es posterior a `fa9b177`. Las cifras del 1.er análisis se conservan del commit `899aa53`, porque los archivos de `despues/` se sobrescribieron con el 2.º.
 3. **Versiones de Semgrep distintas:** 1.180.0 (antes) vs 1.181.0 (después). Ambos cargaron 1 074 reglas, por lo que el conjunto de reglas parece equivalente, pero no se conserva la línea de comandos usada.
 4. **ZAP — tipos de escaneo distintos:**
 
    | Objetivo | Antes | Después |
    |---|---|---|
    | API, baseline (pasivo) | `reporte-zap-api-baseline.html` | `reporte-zap-api-baseline.html` |
-   | API, full (activo) sin autenticación | `reporte-zap-api-full.html` | `reporte-zap-api-full.html` (generado 15/10 23:53 local, **antes** de terminar algunas correcciones, ver V‑09) |
+   | API, full (activo) sin autenticación | `reporte-zap-api-full.html` | `reporte-zap-api-full.html` (generado 15/10 23:53 local; su contenido indica que **no corresponde a la versión final del código**, ver V‑09 y V‑10) |
    | API autenticada | `reporte-zap-api-autenticado.html` (solo alertas pasivas) | `reporte-zap-api-full-autenticado.html` (full) |
    | Frontend, baseline | `reporte-zap-baseline.html` | `reporte-zap-baseline.html` |
-   | Frontend, full | `reporte-zap-full-rapido.html` (cubre `:3000` y `:4000`) | **No disponible: el ZAP Full Scan del frontend no se completó por falta de recursos** |
+   | Frontend, full | `reporte-zap-full-rapido.html` (cubre `:3000` y `:4000`) | `reporte-zap-full-rapido.html` (16/10 **10:42** local, versión definitiva). Hubo dos ejecuciones previas: un primer intento que no se completó por falta de recursos y un escaneo intermedio a las 10:18, anterior a la corrección de cabeceras (R‑08). El HTML de las 10:18 fue **sobrescrito**; sus resultados se conservan en las tablas de este informe |
 
-   En consecuencia, **no existe verificación DAST activa del frontend después de las correcciones**.
+   El Full Scan definitivo del frontend (10:42) se ejecutó **después** de la corrección de cabeceras (R‑08) y la verifica. Los recuentos de URLs y de PASS/WARN/FAIL provienen del resumen de consola de ZAP que proporcionó el autor, porque el informe HTML (plantilla *traditional-html*) no los incluye.
 5. **`pnpm audit`:** el número de dependencias pasó de 305 a 435 (se agregaron Vitest, Testing Library, jsdom, etc.), por lo que la superficie analizada cambió.
 6. **Limitación de detección:** ni SonarQube ni Semgrep detectaron en el "antes" la inyección SQL, el JWT sin verificar, el IDOR ni el XSS. Que una herramienta reporte 0 hallazgos **no implica** ausencia de vulnerabilidades; varias de las más graves siguen presentes (§R).
 
@@ -81,12 +96,13 @@ Los análisis "antes" y "después" **no se ejecutaron con alcances ni configurac
 | V‑05 | Divulgación de información en errores (SQL, stack, mensajes del motor) | ZAP (100000, 500 en `q` y login); revisión de código | Low (ZAP) | `apps/api/src/index.ts`, `auth.ts`, `routes/users.ts` | Mensajes genéricos al cliente, registro en servidor | Nuevo manejador de errores en `app.ts`; respuestas genéricas | **Verificada** |
 | V‑06 | Validación de entrada insuficiente (500 ante tipos inesperados) | ZAP (100000) | Low (ZAP) | `routes/tickets.ts`, `routes/users.ts`, `index.ts` | Validación de tipos, listas blancas, límites | `validateTicketBody`, `parseId`, `ROLES`, límite `100kb` | **Verificada** |
 | V‑07 | Exposición de `password_hash` y PII en `/api/users` | Revisión de código (sin alerta en los reportes) | No asignada por herramienta | `apps/api/src/routes/users.ts` | Minimización de datos | Columnas explícitas sin hash; correo solo para admin | **Verificada por pruebas** (sin evidencia de herramienta) |
-| V‑08 | Cabecera `X-Powered-By` (API) | SonarQube (S5689), ZAP (10037) | Minor (Sonar) / Low (ZAP) | `apps/api/src/index.ts` | Deshabilitar cabecera | `app.disable('x-powered-by')` | **Verificada en API**; persiste en frontend |
+| V‑08 | Cabecera `X-Powered-By` (API) | SonarQube (S5689), ZAP (10037) | Minor (Sonar) / Low (ZAP) | `apps/api/src/index.ts` | Deshabilitar cabecera | `app.disable('x-powered-by')` | **Verificada** en API y frontend (frontend: `poweredByHeader: false`, ver R‑08) |
 | V‑09 | Falta `X-Content-Type-Options` | ZAP (10021) | Low | API y frontend | Enviar `nosniff` en todas las respuestas | Middleware en `app.ts`; `headers()` en `next.config.mjs` | **Verificada** (API parcialmente, ver detalle) |
 | V‑10 | Respuestas `text/html` en la API (404 por defecto de Express) | ZAP (100001) | Low | `apps/api/src/index.ts` | 404 en JSON | Manejador 404 JSON en `app.ts` | **Parcialmente verificada** |
 | V‑11 | Dependencias con vulnerabilidades conocidas | pnpm audit | 6 Critical, 18 High, 25 Moderate, 4 Low | `package.json` (raíz, api, web), `pnpm-lock.yaml` | Actualizar a versiones parcheadas | `next 15.5.28`, `jsonwebtoken ^9.0.3`, `lodash ^4.18.1`, `express ^4.22.3`, overrides | **Verificada** (queda 1 High sin parche) |
+| V‑13 | Cabeceras de seguridad ausentes en el frontend (CSP, anti‑clickjacking, Permissions‑Policy, COOP/COEP/CORP, `X-Powered-By`) | ZAP (10038, 10020, 10063, 90004, 10037) | Medium / Low | `apps/web/next.config.mjs` | CSP con nonce y cabeceras en todas las respuestas | `middleware.ts`, `lib/csp.ts`, `next.config.mjs`, `not-found.tsx`, render dinámico | **Verificada** (ZAP Full Scan 10:42; detalle en R‑08) |
 | V‑12 | Instalación en Docker sin lockfile | Revisión de código (sin alerta) | No asignada | Dockerfiles | `--frozen-lockfile` | Se copia `pnpm-lock.yaml` y se usa `--frozen-lockfile` | Implementada, **sin verificación de herramienta** |
-| M‑01…M‑34 | 34 *code smells* (mantenibilidad) | SonarQube | Major/Minor | `apps/web/**`, `apps/api/src/db.ts`, `hash.ts`, `docs/**` | Refactorizaciones menores | Ver §M | **Verificada** en `apps`; `docs/` corregido pero **fuera del alcance** del escaneo posterior |
+| M‑01…M‑34 | 34 *code smells* (mantenibilidad) | SonarQube | Major/Minor | `apps/web/**`, `apps/api/src/db.ts`, `hash.ts`, `docs/**` | Refactorizaciones menores | Ver §M | **Verificada** (2.º análisis, con `docs/` incluido: 0 code smells abiertos) |
 
 ### 1.2 Hallazgos NO corregidos (riesgos residuales)
 
@@ -99,7 +115,8 @@ Los análisis "antes" y "después" **no se ejecutaron con alcances ni configurac
 | R‑05 | Cookie de sesión sin `HttpOnly`/`Secure`/`SameSite`; token en `localStorage` | Código | `apps/api/src/auth.ts:48`, `apps/web/lib/api.ts:13` | Pendiente |
 | R‑06 | CORS que refleja cualquier origen con credenciales — CWE‑942 | Código | `apps/api/src/app.ts:22-27` | Pendiente |
 | R‑07 | Sin limitación de intentos de login — CWE‑307 | Código | `apps/api/src/auth.ts:23-24` | Pendiente |
-| R‑08 | Cabeceras de seguridad ausentes en el frontend (CSP, anti‑clickjacking, COEP/COOP/CORP, Permissions‑Policy, `X-Powered-By: Next.js`) | ZAP baseline después | `apps/web/next.config.mjs` | Pendiente |
+| R‑08 | Cabeceras de seguridad ausentes en el frontend (CSP, anti‑clickjacking, COEP/COOP/CORP, Permissions‑Policy, `X-Powered-By: Next.js`) | ZAP baseline y Full Scan después | `apps/web/next.config.mjs`, `middleware.ts`, `lib/csp.ts` | **Corregida y verificada** con ZAP (10:42). Se mantiene en esta lista por trazabilidad (= V‑13) |
+| R‑11 | Sitio servido solo por HTTP (ZAP 10106) — CWE‑311 | ZAP Full Scan frontend después | Despliegue (Docker / servidor) | **Aceptado en el laboratorio** (`http://localhost:3000`); HTTPS obligatorio en producción |
 | R‑09 | `braces@3.0.3` (GHSA‑vfj7‑8cjw‑p6xm, High, sin versión parcheada) | pnpm audit después | dependencia transitiva de `tailwindcss` | Pendiente (sin parche disponible) |
 | R‑10 | Contraseña por defecto `'changeme'` al crear usuarios | Código | `apps/api/src/routes/users.ts:78` | Pendiente |
 
@@ -311,7 +328,7 @@ export function verifyPassword(password: string, stored: string): boolean {
 #### 4. Verificación
 
 - **Pruebas** (`apps/api/test/hash.test.ts`): `produce el formato scrypt$<salt>$<hash> y nunca contiene la contraseña`, `usa un salt distinto en cada llamada`, `acepta la contraseña correcta`, `rechaza una contraseña incorrecta o vacía`, `rechaza hashes heredados (MD5 sin salt) o mal formados`. También `bootstrap.test.ts › crea los usuarios demo con contraseñas scrypt verificables`.
-- **SAST:** SonarQube S4790: 1 → 0. Semgrep `md5-used-as-password`: 1 → 0 (`despues/semgrep.sarif`, 0 resultados).
+- **SAST:** SonarQube S4790: 1 → 0 (ambos análisis "después"). Semgrep `md5-used-as-password`: 1 → 0 (`despues/semgrep.sarif`, 0 resultados; este SARIF es el que importa el 2.º análisis de SonarQube).
 - **Estado:** **Verificada.**
 
 ---
@@ -375,7 +392,7 @@ CMD ["node_modules/.bin/next", "start", "-p", "3000"]
 
 #### 4. Verificación
 
-- **SAST:** Semgrep `missing-user`: 2 → 0. SonarQube S6471: 2 → 0.
+- **SAST:** Semgrep `missing-user`: 2 → 0 (SARIF directo; al reimportarse en SonarQube no aporta hallazgos). SonarQube S6471: 2 → 0 (ambos análisis "después").
 - **No se encontró evidencia** en el repositorio de una construcción y ejecución de las imágenes verificando el UID en tiempo de ejecución (p. ej. `docker exec … id`). Los escaneos ZAP "después" demuestran que la aplicación se ejecutó, pero no indican si fue en Docker.
 - **Estado:** **Verificada por SAST**; verificación en tiempo de ejecución sin evidencia.
 
@@ -625,15 +642,15 @@ export const app = express();
 app.disable('x-powered-by');
 ```
 
-- **No se modificó** el frontend: `apps/web/next.config.mjs` no define `poweredByHeader: false`.
+- En el frontend se añadió después `poweredByHeader: false` en `apps/web/next.config.mjs` (ver R‑08).
 
 #### 4. Verificación
 
 - **Prueba:** `app.test.ts › no revela el framework en X-Powered-By`.
-- **SAST:** SonarQube S5689: 1 → 0.
+- **SAST:** SonarQube S5689: 1 → 0 (ambos análisis "después").
 - **DAST API:** 10037 presente en todos los escaneos API "antes"; **ausente** en los tres escaneos API "después".
 - **DAST frontend:** 10037 **sigue presente** en `despues/reporte-zap-baseline.html` (3 instancias, `X-Powered-By: Next.js`).
-- **Estado:** **Verificada en la API**; **pendiente en el frontend** (R‑08).
+- **Estado:** **Verificada en la API y en el frontend.** En el frontend, 10037 desaparece en el ZAP Full Scan definitivo (10:42) (R‑08).
 
 ---
 
@@ -679,7 +696,7 @@ async headers() {
 - **Pruebas:** `api.test.ts › X-Content-Type-Options: nosniff en respuestas 200, 400, 401 y 404`; `next-app.test.tsx › envía X-Content-Type-Options: nosniff en todas las rutas`.
 - **DAST frontend:** 10021 presente "antes" (sistémica) → **ausente** en `despues/reporte-zap-baseline.html`.
 - **DAST API:**
-  - `despues/reporte-zap-api-full.html` (15/10, 23:53 local) **todavía muestra 1 instancia** en `GET /api/health`. Este escaneo es anterior a la versión final del código.
+  - `despues/reporte-zap-api-full.html` (15/10, 23:53 local) **todavía muestra 1 instancia** en `GET /api/health`. En el código final el middleware `nosniff` se registra antes de `/api/health` (`app.ts:15` vs `app.ts:36`), así que esta alerta indica que el escaneo se ejecutó contra una versión anterior de la API. Se trata de una inferencia por fechas y contenido; el reporte no registra qué versión del código se escaneó.
   - `despues/reporte-zap-api-full-autenticado.html` (16/10, 00:13 local) y `despues/reporte-zap-api-baseline.html` (16/10, 09:13 local): **sin alerta 10021**.
 - **Estado:** **Verificada en el frontend y en los escaneos API más recientes**; el escaneo API full no autenticado "después" está desactualizado respecto del código final.
 
@@ -713,7 +730,7 @@ app.use((_req, res) => {
 
 - **Prueba:** `api.test.ts › las rutas inexistentes devuelven 404 en JSON`.
 - **DAST:**
-  - `despues/reporte-zap-api-full.html`: **17 instancias todavía presentes** (p. ej. `/`, `/api`, `/api/auth/actuator/health`, `/latest/meta-data/`), todas con `text/html`. Como se indicó en V‑09, este escaneo se ejecutó antes de la versión final del código.
+  - `despues/reporte-zap-api-full.html`: **17 instancias todavía presentes** (p. ej. `/`, `/api`, `/api/auth/actuator/health`, `/latest/meta-data/`), todas con `text/html`. Como se indicó en V‑09, todo apunta a que este escaneo se ejecutó contra una versión anterior del código.
   - `despues/reporte-zap-api-full-autenticado.html` y `despues/reporte-zap-api-baseline.html`: **sin alerta 100001**.
 - **Estado:** **Parcialmente verificada.** El código y la prueba confirman la corrección, pero no hay un escaneo **full no autenticado** posterior a la versión final que lo confirme con el mismo alcance que el "antes". Se recomienda repetirlo.
 
@@ -814,7 +831,7 @@ COPY pnpm-workspace.yaml package.json ./
 RUN pnpm install --filter @secure-crm/shared --filter @secure-crm/api
 ```
 
-- **Clasificación:** A03:2025 Software Supply Chain Failures / A08:2025 · CWE‑1104 (uso de componentes no mantenidos/no controlados). Severidad no asignada por herramienta.
+- **Clasificación:** A03:2025 Software Supply Chain Failures / A08:2025. No se asigna un CWE específico. Severidad no asignada por herramienta.
 
 #### 2. Propuesta de solución
 
@@ -856,16 +873,16 @@ Estos hallazgos **no son vulnerabilidades de seguridad**; se corrigieron para de
 | Web:S6811 | `aria-selected` no válido en `button` | 1 | `docs/sast/index.html:62` | `aria-current` (+ selector CSS) |
 | Web:S6851 | Palabra "image" redundante en `alt` | 2 | `docs/sast/index.html:267,271` | Texto `alt` reescrito |
 
-**Verificación:** SonarQube "después" reporta `code_smells = 0`. Sin embargo:
+**Verificación:**
 
-- Los **13 hallazgos en `docs/`** quedaron **fuera del alcance** del análisis posterior (`sonar.sources=apps,packages`). El diff de `fa9b177` muestra que el código sí se corrigió, pero **SonarQube no lo re‑analizó**. Estado: **corregido en código, no verificado por escaneo**.
-- Los **21 hallazgos en `apps/`** sí están en el alcance de ambos análisis. Estado: **verificados**.
+- Los **21 hallazgos en `apps/`** están en el alcance de todos los análisis. Los dos análisis "después" reportan `code_smells = 0` y 0 issues abiertos. Estado: **verificados**.
+- Los **13 hallazgos en `docs/`** quedaron fuera del 1.er análisis "después" (`sonar.sources=apps,packages`). El 2.º análisis (09:51), que incluyó `docs/` (§0.3), reporta 0 issues abiertos y `code_smells = 0`, y el diff de `fa9b177` muestra que el código se corrigió. Estado: **verificados**.
 
 ---
 
 ## 3. Riesgos residuales (vulnerabilidades NO corregidas)
 
-Las siguientes vulnerabilidades **siguen presentes** en el código actual de la rama. Ninguna de ellas fue reportada por SonarQube, Semgrep ni ZAP, lo que explica por qué los escaneos "después" aparecen limpios a pesar de su existencia.
+Las siguientes vulnerabilidades **siguen presentes** en el código actual de la rama. R‑01 a R‑07 y R‑10 **no fueron reportadas por ninguna herramienta** (SonarQube, Semgrep ni ZAP), lo que explica que los escaneos SAST "después" aparezcan limpios a pesar de su existencia. R‑09 aparece en `pnpm audit` y R‑11 en ZAP. R‑08, también reportada por ZAP, **ya está corregida y verificada**; se conserva en esta sección por trazabilidad.
 
 ### R‑01 — JWT aceptado sin verificar la firma (**sigue vulnerable**)
 
@@ -886,7 +903,7 @@ req.user = { sub: payload.sub, username: payload.username, role: payload.role };
   - `test.fails('[vuln. conocida CWE-347] rechaza tokens firmados con otro secreto')`
   - `test.fails('[vuln. conocida CWE-347] rechaza tokens sin firma (alg none)')`
 
-  Ambas **fallan** en la ejecución actual (por eso Vitest las cuenta como "expected fail"): un token firmado con otro secreto, o un token `alg: none` sin firma, es **aceptado** por `/api/users`.
+  Ambas esperan un `401` y **fallan** en la ejecución actual (por eso Vitest las cuenta como "expected fail"): un token firmado con otro secreto, o un token `alg: none` sin firma, **no es rechazado** por `/api/users`.
 - **Corrección recomendada:** `jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] })` dentro de un `try/catch` que devuelva 401.
 - **Nota:** actualizar `jsonwebtoken` a 9.0.3 (V‑11) **no** corrige este problema.
 
@@ -919,13 +936,18 @@ req.user = { sub: payload.sub, username: payload.username, role: payload.role };
 
 ### R‑04 — Cross‑Site Scripting (XSS) en el frontend
 
-- **Clasificación:** A05:2025 Injection · **CWE‑79**. No detectado por ninguna herramienta en los reportes disponibles (y el ZAP Full Scan del frontend "después" no se completó).
+- **Clasificación:** A05:2025 Injection · **CWE‑79**. No detectado por ninguna herramienta en los reportes disponibles, incluido el ZAP Full Scan definitivo del frontend (10:42). Que ZAP no lo reporte **no demuestra que no exista**: el código vulnerable sigue presente.
 - **Ubicaciones:**
-  - `apps/web/app/tickets/page.tsx:70` — término de búsqueda reflejado: `dangerouslySetInnerHTML={{ __html: `“${activeQuery}”` }}` (XSS reflejado vía `?q=`).
+  - `apps/web/app/tickets/page.tsx:70` — término de búsqueda reflejado (XSS reflejado vía `?q=`):
+
+    ```tsx
+    <span className="font-medium text-ink" dangerouslySetInnerHTML={{ __html: `“${activeQuery}”` }} />
+    ```
   - `apps/web/app/tickets/page.tsx:102` — `dangerouslySetInnerHTML={{ __html: t.title }}` (XSS almacenado).
   - `apps/web/app/tickets/[id]/page.tsx:97` — `dangerouslySetInnerHTML={{ __html: t.description }}` (XSS almacenado).
 - **Impacto agravado:** el JWT se guarda en `localStorage` (`apps/web/lib/api.ts:13`) y la cookie no es `HttpOnly` (R‑05), por lo que un XSS permite robar la sesión. No hay CSP (R‑08).
-- **Recomendación:** renderizar como texto (`{t.title}`) o sanitizar con DOMPurify; añadir CSP.
+- **Mitigación parcial añadida:** la CSP con nonce de R‑08, cuya presencia confirma ZAP, debería bloquear en el navegador la ejecución de scripts y manejadores inline inyectados. Esa mitigación **no se ha probado con un payload XSS en un navegador** y **no elimina la vulnerabilidad**: el HTML no confiable se sigue insertando. Requiere una verificación independiente.
+- **Recomendación:** renderizar como texto (`{t.title}`) o sanitizar con DOMPurify.
 
 ### R‑05 — Gestión insegura de la sesión
 
@@ -940,22 +962,124 @@ req.user = { sub: payload.sub, username: payload.username, role: payload.role };
 
 - `apps/api/src/auth.ts:23-24` (comentario y código): sin *rate limiting* ni bloqueo de cuenta — A07:2025 · CWE‑307. El cambio a scrypt (V‑03) encarece cada intento en el servidor, pero no lo limita.
 
-### R‑08 — Cabeceras de seguridad ausentes en el frontend
+### R‑08 — Cabeceras de seguridad del frontend (corregida y verificada con ZAP)
 
-`despues/reporte-zap-baseline.html` mantiene las mismas alertas que el "antes", salvo `X-Content-Type-Options`:
+#### 1. Vulnerabilidad encontrada
 
-| Alerta ZAP | Riesgo | Antes | Después |
-|---|---|---|---|
-| 10038 Content Security Policy Header Not Set | Medium | 3 | 3 |
-| 10020 Missing Anti‑clickjacking Header | Medium | 1 | 1 |
-| 90004 Cross‑Origin‑Embedder‑Policy | Low | 1 | 1 |
-| 90004 Cross‑Origin‑Opener‑Policy | Low | 1 | 1 |
-| 90004 Cross‑Origin‑Resource‑Policy | Low | Sistémica | Sistémica |
-| 10063 Permissions Policy Header Not Set | Low | Sistémica | Sistémica |
-| 10037 X‑Powered‑By (`Next.js`) | Low | 3 | 3 |
-| 10021 X‑Content‑Type‑Options Header Missing | Low | Sistémica | **0** |
+- **Tipo:** Advertencias de herramienta (configuración).
+- **Herramienta:** OWASP ZAP. Aparece en el baseline "antes" y "después", y en el **Full Scan intermedio del frontend** (16/10/2026 10:18 local, anterior a esta corrección; su HTML fue sobrescrito por el escaneo definitivo de las 10:42 en `despues/reporte-zap-full-rapido.html`). Según el resumen de consola de ZAP aportado por el autor, ese escaneo intermedio analizó 24 URLs con 136 PASS, 6 WARN y 0 FAIL.
+- **Clasificación:** A02:2025 Security Misconfiguration · CWE‑693 (CSP, cabeceras), CWE‑1021 (clickjacking), CWE‑497 (`X-Powered-By`).
+- **Ubicación:** `apps/web/next.config.mjs`. Solo enviaba `X-Content-Type-Options`:
 
-En la API tampoco se configuraron CSP, `X-Frame-Options`, HSTS ni `Referrer-Policy` (lo reconoce el comentario de `app.ts:33-35`), aunque ZAP no las reporta para respuestas JSON.
+```js
+// apps/web/next.config.mjs (antes de esta corrección)
+async headers() {
+  return [
+    {
+      source: '/:path*',
+      headers: [{ key: 'X-Content-Type-Options', value: 'nosniff' }],
+    },
+  ];
+},
+```
+
+| Alerta ZAP | Riesgo | Baseline antes | Baseline después | Full Scan intermedio (10:18, antes de la corrección) | URLs afectadas (10:18) | **Full Scan definitivo (10:42)** |
+|---|---|---|---|---|---|---|
+| 10038 Content Security Policy Header Not Set | Medium | 3 | 3 | 4 | `/`, `/robots.txt`, `/sitemap.xml` (404) | **0** |
+| 10020 Missing Anti‑clickjacking Header | Medium | 1 | 1 | 2 | `/` | **0** |
+| 10106 HTTP Only Site | Medium | — | — | 1 | `/` (ZAP intentó `https://localhost:3000/`) | 1 (aceptada, R‑11) |
+| 90004 Cross‑Origin‑Embedder‑Policy | Low | 1 | 1 | 2 | `/` | **0** |
+| 90004 Cross‑Origin‑Opener‑Policy | Low | 1 | 1 | 2 | `/` | **0** |
+| 90004 Cross‑Origin‑Resource‑Policy | Low | Sistémica | Sistémica | 5 | `/`, `/_next/static/chunks/*.js`, `/_next/static/css/*.css`, `/_next/static/media/*.woff2` | **0** |
+| 10063 Permissions Policy Header Not Set | Low | Sistémica | Sistémica | Sistémica | `/`, 404, `/_next/static/chunks/*.js` | **0** |
+| 10037 X‑Powered‑By (`Next.js`) | Low | 3 | 3 | 4 | `/`, `/robots.txt`, `/sitemap.xml` | **0** |
+| 10021 X‑Content‑Type‑Options Header Missing | Low | Sistémica | 0 | 0 | — | 0 |
+| 10055 CSP: directivas débiles o sin *fallback* | Medium | — | — | — | — | **0** (no aparece pese a `style-src-attr 'unsafe-inline'`) |
+
+- **Riesgo:** sin CSP, un XSS (R‑04) puede ejecutar scripts arbitrarios; sin anti‑clickjacking la app puede incrustarse en un `<iframe>` malicioso; la falta de COOP/COEP/CORP debilita el aislamiento entre orígenes; `X-Powered-By` facilita el *fingerprinting*.
+
+#### 2. Propuesta de solución
+
+- Enviar las cabeceras en **todas** las respuestas: páginas, 404 y recursos estáticos de `/_next/static` y `public/`.
+- CSP **con nonce por petición** y `'strict-dynamic'`, **sin `'unsafe-eval'` en producción, sin `'unsafe-inline'` en scripts y sin comodines de origen**. Una CSP con `'unsafe-inline'` en `script-src` no protegería contra XSS.
+- `poweredByHeader: false` para eliminar `X-Powered-By: Next.js`.
+- No ocultar 10106: el laboratorio usa HTTP local a propósito.
+- **Controles:** cabeceras de seguridad HTTP, CSP estricta basada en nonce, aislamiento entre orígenes, mínimo privilegio para APIs del navegador.
+
+#### 3. Cómo se solucionó
+
+| Archivo | Cambio |
+|---|---|
+| `apps/web/next.config.mjs` | `poweredByHeader: false`; `securityHeaders` en `source: '/:path*'`: `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Permissions-Policy`, `Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Embedder-Policy: require-corp`, `Cross-Origin-Resource-Policy: same-origin`, `Referrer-Policy: strict-origin-when-cross-origin` |
+| `apps/web/lib/csp.ts` (nuevo) | `buildCsp(nonce)` y `apiOrigin()`: construcción de la política |
+| `apps/web/middleware.ts` (nuevo) | Nonce aleatorio por petición; CSP en la petición (para que Next.js ponga el nonce en sus `<script>`) y en la respuesta |
+| `apps/web/app/layout.tsx` | `export const dynamic = 'force-dynamic'`: el nonce solo se aplica si la página se renderiza en cada petición (antes las páginas se prerenderizaban en el build) |
+| `apps/web/app/not-found.tsx` (nuevo) | 404 propia con el diseño de la app. La 404 por defecto de Next.js incluye un `<style>` inline sin nonce que la CSP bloquearía |
+| `apps/web/test/next-app.test.tsx`, `apps/web/test/csp.test.ts` (nuevo) | Pruebas de cabeceras, CSP, middleware y 404 |
+
+Política resultante en producción (`next start`), con un nonce distinto en cada respuesta:
+
+```
+default-src 'self';
+script-src 'self' 'nonce-<aleatorio>' 'strict-dynamic';
+style-src 'self' 'nonce-<aleatorio>';
+style-src-elem 'self' 'nonce-<aleatorio>';
+style-src-attr 'unsafe-inline';
+img-src 'self' data: blob:;
+font-src 'self';
+connect-src 'self' http://localhost:4000;
+object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+```
+
+- `connect-src` incluye **solo el origen** de `NEXT_PUBLIC_API_URL` (por defecto `http://localhost:4000`), no comodines.
+- **Excepción documentada 1 — `style-src-attr 'unsafe-inline'`:** el SSR de React y de `motion` genera atributos `style="…"` (p. ej. `opacity:0;transform:translateY(12px)` en `/login`) que no pueden llevar nonce. Solo afecta a atributos de estilo, no a `<style>` ni a scripts. ZAP podría reportarlo como advertencia de CSP (10055).
+- **Excepción documentada 2 — solo en `next dev`:** se añaden `'unsafe-eval'` a `script-src` y `'unsafe-inline'` a estilos, porque React Refresh y webpack los necesitan en desarrollo. **No aparecen en el build de producción** (`next start`, imagen Docker), que es lo que analiza ZAP.
+- **Efecto sobre R‑04 (XSS):** sin `'unsafe-inline'` en `script-src`, la CSP bloquea los manejadores inline (`onerror=…`) y los scripts inyectados mediante `dangerouslySetInnerHTML`. Es defensa en profundidad: **el XSS sigue presente en el código** (R‑04) y no está verificado en un navegador.
+- **Rendimiento:** al forzar render dinámico, las páginas dejan de prerenderizarse (en el build pasan de `○ Static` a `ƒ Dynamic`). Es el requisito de Next.js para usar nonces.
+- **COEP `require-corp`:** compatible porque todos los recursos (scripts, CSS, fuentes de `next/font`, imágenes de `public/`) son del mismo origen y la API se consulta con `fetch` en modo CORS. Se comprobó que la API responde al preflight con `Access-Control-Allow-Origin` y `Access-Control-Allow-Credentials`.
+
+#### 4. Verificación
+
+- **Pruebas automatizadas:** `pnpm test` → API 66 superadas + 5 fallos esperados; web **40 superadas** (antes 33). Nuevas: `next-app.test.tsx › envía las cabeceras de seguridad en todas las rutas y oculta X-Powered-By`, `NotFound › página 404 propia sin <style> inline`; `csp.test.ts` (6 pruebas: política de producción sin `unsafe-eval`/comodines, excepciones de desarrollo, `apiOrigin`, nonce en petición y respuesta, nonce distinto por petición, alcance del matcher).
+- **Tipos y build:** `tsc --noEmit` sin errores en `apps/web` y `apps/api`; `pnpm build` correcto (incluye `ƒ Middleware`).
+- **Comprobación HTTP local** (`next start -p 3100`, sin tocar los contenedores Docker) sobre `/`, `/login`, `/dashboard`, `/tickets`, `/tickets/new`, `/tickets/1`, `/admin`, `/robots.txt` (404), `/sitemap.xml` (404), `/no-existe` (404), `/brand/logo.svg`, un CSS y un JS de `/_next/static`:
+  - Todas las respuestas incluyen `X-Frame-Options`, `Permissions-Policy`, COOP, COEP, CORP, `Referrer-Policy` y `X-Content-Type-Options`; **ninguna** incluye `X-Powered-By`.
+  - Páginas, 404 y archivos de `public/` incluyen la CSP. Los recursos de `/_next/static` no (no son documentos HTML).
+  - En todas las páginas, **el 100 % de los `<script>` llevan el nonce** de su respuesta, no hay `<style>` sin nonce, manejadores `on…=` ni recursos de otros orígenes.
+  - `next dev` (puerto 3101) también sirve las páginas con nonce, con `'unsafe-eval'` solo en ese modo.
+- **Limitaciones:**
+  - No había navegador disponible en el entorno, así que **no se comprobó en un navegador real** que no aparezcan violaciones de CSP en consola, que el login contra la API funcione con COEP o que las animaciones se rendericen. Se recomienda abrir la app con las DevTools y revisar la consola.
+- **Verificación DAST — ZAP Full Scan definitivo** (`despues/reporte-zap-full-rapido.html`, 16/10/2026 10:42 local):
+
+  | | Escaneo intermedio (10:18) | Escaneo definitivo (10:42) |
+  |---|---|---|
+  | URLs analizadas | 24 | 28 |
+  | PASS | 136 | 141 |
+  | WARN | 6 | **1** |
+  | FAIL | 0 | 0 |
+
+  *(Recuentos del resumen de consola de ZAP, aportados por el autor. El HTML no incluye PASS/WARN/FAIL; las alertas sí se comprobaron en el HTML.)*
+  - **Desaparecen cinco categorías de advertencia:** anti‑clickjacking (10020), `X-Powered-By` (10037), CSP ausente (10038), Permissions‑Policy (10063) y las políticas de aislamiento de recursos (90004: COEP, COOP y CORP).
+  - **Única advertencia restante:** 10106 *HTTP Only Site* (Medium, 1 instancia), aceptada y documentada en R‑11.
+  - **No aparece 10055** (debilidades de CSP), aunque la política permite `style-src-attr 'unsafe-inline'`.
+  - El resto del reporte son alertas **informativas**: 10109 *Modern Web Application*, 10049 *Non‑Storable / Storable and Cacheable / Storable but Non‑Cacheable Content* y 10104 *User Agent Fuzzer*. Esta última es una regla activa, lo que confirma que el escaneo fue activo.
+  - **Indicio de que se analizó el frontend reconstruido:** la hoja de estilos compilada referenciada cambió de `/_next/static/css/d2226e6fd429b082.css` (10:18) a `/_next/static/css/6b7724a23fc4a03c.css` (10:42).
+  - Las URLs analizadas incluyen páginas, respuestas 404 (`/robots.txt`, `/sitemap.xml`), recursos estáticos (`/_next/static/chunks`, `/css`, `/media`) y `public/` (`/brand/logo.svg`), que son los tipos de respuesta a los que se aplicaron las cabeceras.
+- **Limitación que se mantiene:** ZAP verifica la **presencia** de las cabeceras, no que el navegador cargue la app sin violaciones de CSP. Esa comprobación con las DevTools no está documentada en el repositorio.
+- **Estado:** **Corregida y verificada con ZAP** (cabeceras del frontend).
+
+### R‑11 — Sitio servido solo por HTTP (ZAP 10106)
+
+- **Herramienta:** ZAP 10106 *HTTP Only Site* (Medium, CWE‑311) en `despues/reporte-zap-full-rapido.html`: ZAP intentó `https://localhost:3000/` sin éxito.
+- **Situación:** el laboratorio se sirve deliberadamente por HTTP local (`docker-compose.yml`, `next start -p 3000`, `NEXT_PUBLIC_API_URL=http://localhost:4000`). **No se intentó ocultar esta advertencia.**
+- **Riesgo en producción:** sin TLS, el JWT, las credenciales del login y los datos de los tickets viajan en claro y pueden interceptarse o modificarse (MITM).
+- **Recomendación para producción:**
+  - Terminar TLS en un *reverse proxy* (Nginx, Traefik, Caddy) o en el balanceador, con certificados válidos (p. ej. Let's Encrypt), y redirigir HTTP → HTTPS.
+  - Servir la API también por HTTPS y actualizar `NEXT_PUBLIC_API_URL` y `connect-src` al origen `https://…`.
+  - Añadir `Strict-Transport-Security: max-age=31536000; includeSubDomains` (solo con HTTPS activo) y, en la CSP, `upgrade-insecure-requests`.
+  - Marcar la cookie de sesión como `Secure` (relacionado con R‑05).
+- **Resultado del ZAP Full Scan definitivo (10:42):** sigue apareciendo, y es la única advertencia del escaneo.
+- **Estado:** **Riesgo aceptado en el entorno de laboratorio** (`http://localhost:3000`). No está corregido: HTTPS es obligatorio para cualquier despliegue en producción.
 
 ### R‑09 — `braces@3.0.3` sin parche
 
@@ -971,17 +1095,27 @@ En la API tampoco se configuraron CSP, `X-Frame-Options`, HSTS ni `Referrer-Poli
 
 ### 4.1 SonarQube
 
-| Métrica | Antes (10/10/2026) | Después (16/10/2026 01:01) |
-|---|---|---|
-| Total de hallazgos | 41 | 0 |
-| CRITICAL | 3 | 0 |
-| MAJOR | 14 | 0 |
-| MINOR | 24 | 0 |
-| Vulnerabilities | 7 (4 nativas + 3 importadas de Semgrep) | 0 |
-| Code smells | 34 | 0 |
-| Cobertura | No medida | 83.6 % (código nuevo: 99.6 %) |
-| Quality Gate | — | **OK** (new_coverage ≥ 80, duplicación ≤ 3 %, new_violations = 0) |
-| Alcance | `sonar.sources=.` + SARIF de Semgrep | `apps,packages`, **sin `docs/`** y **sin SARIF de Semgrep** |
+| Métrica | Antes (10/10/2026) | Después — 1.er análisis (16/10 01:01) | Después — 2.º análisis (16/10 09:51) |
+|---|---|---|---|
+| Alcance | `.` + SARIF de Semgrep | `apps,packages`, sin `docs/`, sin SARIF | `apps,packages,docs` + SARIF de Semgrep (confirmado, §0.3) |
+| Issues abiertos | 41 | 0 | **0** |
+| CRITICAL / MAJOR / MINOR (abiertos) | 3 / 14 / 24 | 0 / 0 / 0 | 0 / 0 / 0 |
+| Bugs | No exportado | 0 | 0 |
+| Vulnerabilities | 7 (4 nativas + 3 importadas de Semgrep) | 0 | 0 |
+| Code smells | 34 | 0 | 0 |
+| Security Hotspots | No exportado | No exportado | 0 |
+| Cobertura | No medida | 83.6 % (código nuevo: 99.6 %) | 83.5 % (código nuevo: 98.0 %) |
+| Duplicación | No exportada | Código nuevo: 0.0 % | 0.0 % (código nuevo: 0.0 %) |
+| Líneas analizadas (`ncloc`) | No exportado | No exportado | 5 476 |
+| Quality Gate | — | **OK** | **OK** (new_coverage 98.0 ≥ 80, new_duplicated_lines_density 0.0 ≤ 3, new_violations 0) |
+| Evidencia | `antes/sonarqube-issues.json`, `antes/reporte-sonarqube.pdf` | Versiones de `despues/*.json` del commit `899aa53` | `despues/sonarqube-issues.json`, `sonarqube-metricas.json`, `sonarqube-quality-gate.json` (10:02–10:03) y `despues/reporte-sonarqube.pdf` (10:05) |
+
+Lectura de la tabla:
+
+- El 2.º análisis confirma con un alcance comparable al "antes" (incluidos `docs/` y la importación de Semgrep) que **no quedan issues abiertos de SonarQube**. Los 34 code smells, incluidos los 13 de `docs/`, y las 7 vulnerabilidades del "antes" ya no aparecen.
+- El periodo de "código nuevo" del Quality Gate es `PREVIOUS_VERSION` (1.0.0, desde 2026‑10‑07), igual en ambos análisis posteriores.
+- La exportación intermedia de 10 842 issues (§0.3) correspondía a issues históricos ya cerrados y **no forma parte de esta comparación**.
+- **0 issues abiertos en SonarQube no significa que la aplicación no tenga vulnerabilidades.** SonarQube no detectó en ningún momento el JWT sin verificar, el IDOR, el XSS ni la inyección SQL. Los riesgos residuales de §3 siguen presentes y están confirmados por código y por pruebas que fallan a propósito.
 
 ### 4.2 Semgrep
 
@@ -1023,14 +1157,22 @@ El reporte autenticado "antes" (`reporte-zap-api-autenticado.html`) solo contien
 ### 4.5 OWASP ZAP — Frontend (`localhost:3000`)
 
 - **Baseline:** antes 11 tipos de alerta → después 10 (solo desaparece 10021). Ver tabla de R‑08.
-- **Full scan:** el "antes" (`reporte-zap-full-rapido.html`) incluía además *CSP: Failure to Define Directive with No Fallback* (10055, Medium). **No existe Full Scan del frontend "después"** porque no se completó por falta de recursos; por tanto no hay verificación activa del frontend tras los cambios, y el XSS (R‑04) no ha sido sometido a DAST.
+- **Full scan:** el "antes" (`antes/reporte-zap-full-rapido.html`) incluía además *CSP: Failure to Define Directive with No Fallback* (10055, Medium). Un primer intento de Full Scan "después" no se completó por falta de recursos. Después hubo dos escaneos completos (recuentos de la consola de ZAP):
+
+  | Full Scan frontend | Momento | URLs | PASS | WARN | FAIL | Advertencias |
+  |---|---|---|---|---|---|---|
+  | Antes (`antes/reporte-zap-full-rapido.html`) | 10/10 | — | — | — | — | 10055, 10038, 10020, 90004 ×3, 10063, 10037, 10021 |
+  | Intermedio (10:18, HTML sobrescrito) | Antes de corregir R‑08 | 24 | 136 | 6 | 0 | 10038, 10020, 10106, 90004 ×3, 10063, 10037 |
+  | **Definitivo** (`despues/reporte-zap-full-rapido.html`) | 16/10 10:42, tras corregir R‑08 | 28 | 141 | **1** | 0 | **10106** (aceptada, R‑11) |
+
+  Las cifras de URLs y PASS/WARN/FAIL del "antes" no están disponibles. El XSS (R‑04) no fue detectado por ZAP en ninguna ejecución.
 
 ### 4.6 Pruebas automatizadas
 
 | Paquete | Antes (`2494b78`) | Después (estado actual) |
 |---|---|---|
 | `apps/api` | Sin pruebas | 7 archivos, 66 superadas + **5 fallos esperados** (vulnerabilidades abiertas) |
-| `apps/web` | Sin pruebas | 5 archivos, 33 superadas |
+| `apps/web` | Sin pruebas | 6 archivos, 40 superadas |
 
 ---
 
@@ -1040,7 +1182,9 @@ El reporte autenticado "antes" (`reporte-zap-api-autenticado.html`) solo contien
 2. **La superficie de dependencias vulnerables se redujo de 53 a 1 aviso**, eliminando todos los críticos (incluidas RCE y bypass de autorización en Next.js).
 3. **Se reforzó la robustez de la API:** manejo de errores sin fuga de información, validación de entrada con listas blancas, límite de cuerpo, respuestas JSON consistentes y cabeceras `nosniff`/sin `X-Powered-By`.
 4. **Los resultados "0 hallazgos" de SonarQube y Semgrep no significan que la aplicación sea segura.** Las vulnerabilidades más críticas del diseño —**JWT sin verificación de firma (R‑01)** y **control de acceso roto/IDOR (R‑03)**— **siguen presentes** y están documentadas con pruebas que fallan a propósito. También persisten el XSS, la cookie insegura, el CORS permisivo y la falta de *rate limiting*. Ninguna herramienta SAST las detectó, lo que ilustra las limitaciones del análisis automatizado y la necesidad de revisión manual y pruebas de seguridad dirigidas.
-5. **La comparación antes/después tiene limitaciones metodológicas:** cambio de alcance en SonarQube (sin `docs/` ni SARIF de Semgrep), un escaneo ZAP API full "después" ejecutado antes del código final y ausencia del Full Scan del frontend. Estas diferencias deben mencionarse al presentar las cifras.
+5. **El frontend quedó endurecido a nivel de cabeceras HTTP.** Tras añadir una CSP con nonce (sin `unsafe-eval` ni `unsafe-inline` en scripts) y las cabeceras anti‑clickjacking, Permissions‑Policy y de aislamiento, el ZAP Full Scan del frontend pasó de **6 WARN a 1 WARN** (24 → 28 URLs, 136 → 141 PASS, 0 FAIL). La única advertencia restante, *HTTP Only Site* (10106), se acepta en el laboratorio y obliga a configurar HTTPS en producción (R‑11).
+6. **Un escaneo DAST limpio no prueba la ausencia de vulnerabilidades de lógica.** ZAP no detectó en ningún momento el XSS (R‑04), el JWT sin verificar (R‑01) ni el IDOR (R‑03), que siguen presentes en el código y requieren verificaciones independientes: pruebas manuales o dirigidas y las pruebas `test.fails` existentes. La CSP reduce el impacto potencial del XSS, pero no lo corrige.
+7. **La comparación antes/después tiene limitaciones metodológicas.** En SonarQube se restauró el alcance (`docs/` y SARIF de Semgrep) y el 2.º análisis reporta 0 issues abiertos con Quality Gate OK. El escaneo ZAP API full "después" no corresponde al código final, y los recuentos PASS/WARN/FAIL del frontend provienen de la consola de ZAP, no del HTML. Estas diferencias deben mencionarse al presentar las cifras.
 
 ## 6. Riesgos residuales y recomendaciones priorizadas
 
@@ -1049,10 +1193,11 @@ El reporte autenticado "antes" (`reporte-zap-api-autenticado.html`) solo contien
 | 1 | R‑01 JWT sin verificar | Reemplazar `jwt.decode` por `jwt.verify` con algoritmo fijo; convertir las pruebas `test.fails` en pruebas normales |
 | 2 | R‑03 Broken Access Control / IDOR | Middleware de autorización por rol y por propiedad; denegar escritura a `viewer`; solo `admin` gestiona usuarios y roles |
 | 3 | R‑02 Secreto JWT por defecto | Eliminar el valor de respaldo y exigir `JWT_SECRET` fuerte |
-| 4 | R‑04 XSS | Eliminar `dangerouslySetInnerHTML` o sanitizar; añadir CSP |
+| 4 | R‑04 XSS | Eliminar `dangerouslySetInnerHTML` o sanitizar (la CSP ya está implementada como defensa en profundidad); verificar con un payload en el navegador |
 | 5 | R‑05 / R‑06 Sesión y CORS | Cookie `HttpOnly; Secure; SameSite=Strict`; lista blanca de orígenes CORS; no guardar el token en `localStorage` |
 | 6 | R‑07 Fuerza bruta | *Rate limiting* (p. ej. `express-rate-limit`) y bloqueo temporal |
-| 7 | R‑08 Cabeceras frontend | `headers()` con CSP, `X-Frame-Options`/`frame-ancestors`, COOP/COEP/CORP, `Permissions-Policy`; `poweredByHeader: false` |
+| 7 | R‑11 HTTP (riesgo aceptado en laboratorio) | Configurar HTTPS en producción (proxy TLS, HSTS, `upgrade-insecure-requests`, cookie `Secure`, API por HTTPS) |
+| — | R‑08 Cabeceras frontend | **Corregida y verificada** con ZAP. Pendiente opcional: revisar en el navegador (DevTools) que no haya violaciones de CSP |
 | 8 | R‑10 Contraseña por defecto | Exigir contraseña al crear usuarios con política mínima |
 | 9 | R‑09 `braces` | Monitorizar el aviso y actualizar cuando exista parche |
-| — | Verificación | Repetir el ZAP API full no autenticado con el código final; completar el ZAP Full Scan del frontend; volver a incluir `docs/` y el SARIF de Semgrep en SonarQube para que la comparación tenga el mismo alcance |
+| — | Verificación | Conservar el log de `sonar-scanner` en futuros análisis como evidencia del alcance; regenerar la cobertura con el código final antes del próximo análisis; repetir el ZAP API full no autenticado con el código final; guardar en el repositorio el resumen de consola de ZAP (PASS/WARN/FAIL) junto a cada reporte HTML y no sobrescribir los reportes intermedios |

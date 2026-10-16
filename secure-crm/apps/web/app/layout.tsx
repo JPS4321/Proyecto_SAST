@@ -6,6 +6,10 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'sw
 const display = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-display', display: 'swap' });
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
 
+// Render por petición: Next.js solo puede añadir a sus <script> el nonce de la CSP
+// (middleware.ts) si la página se genera en cada solicitud y no en el build.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Secure CRM — Laboratorio OWASP · UVG',
   description:
