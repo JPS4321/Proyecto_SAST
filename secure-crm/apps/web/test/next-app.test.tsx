@@ -23,11 +23,34 @@ describe('RootLayout', () => {
 });
 
 describe('next.config.mjs', () => {
-  test('envía X-Content-Type-Options: nosniff en todas las rutas', async () => {
+  test('envía las cabeceras de seguridad en todas las rutas y oculta X-Powered-By', async () => {
     const { default: config } = await import('../next.config.mjs');
     expect(config.reactStrictMode).toBe(true);
-    expect(await config.headers?.()).toEqual([
-      { source: '/:path*', headers: [{ key: 'X-Content-Type-Options', value: 'nosniff' }] },
-    ]);
+    expect(config.poweredByHeader).toBe(false);
+    const rules = await config.headers?.();
+    expect(rules).toHaveLength(1);
+    expect(rules[0].source).toBe('/:path*');
+    const headers = Object.fromEntries(rules[0].headers.map((h: { key: string; value: string }) => [h.key, h.value]));
+    expect(headers).toMatchObject({
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+      'Cross-Origin-Resource-Policy': 'same-origin',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+    });
+    expect(headers['Permissions-Policy']).toContain('camera=()');
+    // La CSP lleva nonce por petición: no debe fijarse aquí (se enviaría duplicada).
+    expect(headers).not.toHaveProperty('Content-Security-Policy');
+  });
+});
+
+describe('NotFound', () => {
+  test('página 404 propia sin <style> inline', async () => {
+    const { default: NotFound } = await import('@/app/not-found');
+    const html = renderToStaticMarkup(<NotFound />);
+    expect(html).toContain('Página no encontrada');
+    expect(html).toContain('href="/"');
+    expect(html).not.toContain('<style');
   });
 });
