@@ -1,11 +1,12 @@
 import Database from 'better-sqlite3';
-import path from 'path';
-import fs from 'fs';
+import path from 'node:path';
+import fs from 'node:fs';
 
 const dataDir = path.join(__dirname, '..', 'data');
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-const dbPath = path.join(dataDir, 'crm.db');
+// DB_PATH permite usar otra BD (p. ej. ':memory:' en las pruebas); por defecto data/crm.db.
+const dbPath = process.env.DB_PATH || path.join(dataDir, 'crm.db');
+if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
 export const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');

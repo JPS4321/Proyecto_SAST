@@ -119,7 +119,7 @@
       color 0.15s;
   }
   .navlinks a:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: #1e4c31; /* blanco 8 % sobre --brand-deep, opaco */
     color: #fff;
   }
   @media (max-width: 720px) {
@@ -780,7 +780,7 @@
     font-family: var(--mono);
     font-size: 12.5px;
     color: var(--brand);
-    word-break: break-word;
+    overflow-wrap: anywhere;
   }
   .why {
     margin-top: 14px;
@@ -882,7 +882,7 @@ a.brand {
 }
 .navlinks a[aria-current="page"] {
   color: #fff;
-  background: rgba(255, 255, 255, 0.1);
+  background: #235035; /* blanco 10 % sobre --brand-deep, opaco */
 }
 .paths {
   display: grid;
@@ -1016,7 +1016,7 @@ footer a {
   background: var(--paper-2);
   color: var(--ink);
 }
-.docs-nav button[aria-selected="true"] {
+.docs-nav button[aria-current="true"] {
   background: var(--paper-2);
   color: var(--brand);
   font-weight: 600;
@@ -1093,7 +1093,7 @@ footer a {
     white-space: nowrap;
     border: 1px solid var(--line);
   }
-  .docs-nav button[aria-selected="true"] {
+  .docs-nav button[aria-current="true"] {
     border-color: var(--brand);
   }
 }

@@ -33,7 +33,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
+      ...options.headers,
     },
   });
   const text = await res.text();
@@ -52,7 +52,7 @@ export const api = {
     }),
   dashboard: () => request<DashboardStats>('/api/dashboard'),
   tickets: (q?: string) =>
-    request<{ query: string; tickets: Ticket[] }>(`/api/tickets${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+    request<{ query: string; tickets: Ticket[] }>('/api/tickets' + (q ? '?q=' + encodeURIComponent(q) : '')),
   ticket: (id: number | string) => request<Ticket>(`/api/tickets/${id}`),
   createTicket: (body: Partial<Ticket>) =>
     request<Ticket>('/api/tickets', { method: 'POST', body: JSON.stringify(body) }),

@@ -38,7 +38,8 @@ function TicketsInner() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    router.replace(`/tickets${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+    const search = q ? '?q=' + encodeURIComponent(q) : '';
+    router.replace(`/tickets${search}`);
     load(q);
   }
 
@@ -72,16 +73,18 @@ function TicketsInner() {
 
       {error && <Card className="p-4 text-sm text-red-700">{error}</Card>}
 
-      {loading ? (
+      {loading && (
         <div className="grid place-items-center py-16">
           <div className="h-7 w-7 animate-spin rounded-full border-2 border-uvg-green/20 border-t-uvg-green" />
         </div>
-      ) : tickets.length === 0 ? (
+      )}
+      {!loading && tickets.length === 0 && (
         <Card className="grid place-items-center gap-1.5 py-16 text-center">
           <p className="text-sm font-medium text-ink">No hay tickets</p>
           <p className="text-sm text-uvg-graphite/60">Ajusta la búsqueda o crea uno nuevo.</p>
         </Card>
-      ) : (
+      )}
+      {!loading && tickets.length > 0 && (
         <Card className="overflow-hidden">
           <div className="hidden grid-cols-[3rem_1fr_8rem_8rem_9rem] gap-4 border-b border-uvg-green/8 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-uvg-graphite/50 sm:grid">
             <span>#</span><span>Asunto</span><span>Prioridad</span><span>Estado</span><span>Asignado a</span>

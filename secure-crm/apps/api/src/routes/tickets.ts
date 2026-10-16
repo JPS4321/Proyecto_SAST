@@ -30,15 +30,67 @@ const SELECT = `
   LEFT JOIN users c ON c.id = t.created_by_id
 `;
 
+const STATUSES = new Set(['open', 'in_progress', 'closed']);
+const PRIORITIES = new Set(['low', 'medium', 'high', 'urgent']);
+const MAX_QUERY_LENGTH = 200;
+// Longitud máxima de cada campo de texto aceptado en POST/PUT.
+const TEXT_LIMITS: Record<string, number> = {
+  title: 200,
+  description: 5000,
+  customerName: 200,
+  customerEmail: 254,
+};
+
+// Valida los campos conocidos del cuerpo (los demás se ignoran, como antes).
+// Devuelve un mensaje de error o null. Evita que tipos inesperados (objetos, arrays,
+// números enormes) lleguen a better-sqlite3 y provoquen un 500 (ZAP 100000).
+function validateTicketBody(b: any): string | null {
+  if (typeof b !== 'object' || b === null || Array.isArray(b)) return 'Cuerpo inválido';
+  for (const [field, max] of Object.entries(TEXT_LIMITS)) {
+    const v = b[field];
+    if (v === undefined || v === null) continue;
+    if (typeof v !== 'string') return `El campo ${field} debe ser texto`;
+    if (v.length > max) return `El campo ${field} supera ${max} caracteres`;
+  }
+  if (b.status != null && !STATUSES.has(b.status)) return 'Estado inválido';
+  if (b.priority != null && !PRIORITIES.has(b.priority)) return 'Prioridad inválida';
+  if (b.assigneeId != null && !(Number.isSafeInteger(b.assigneeId) && b.assigneeId > 0)) {
+    return 'assigneeId inválido';
+  }
+  return null;
+}
+
+// Los ids de la ruta deben ser enteros positivos.
+function parseId(raw: string): number | null {
+  return /^[1-9]\d{0,14}$/.test(raw) ? Number(raw) : null;
+}
+
+// Escapa los comodines de LIKE para que '%' y '_' del usuario se busquen literalmente.
+function escapeLike(term: string): string {
+  return term.replace(/[\\%_]/g, (c) => '\\' + c);
+}
+
 // GET /api/tickets?q=...
-// Búsqueda con concatenación de strings (A05 / CWE-89: SQLi de segundo vector).
+// Búsqueda por título, descripción o nombre del cliente con consulta parametrizada:
+// 'q' se pasa como parámetro a better-sqlite3 y nunca se concatena al SQL (CWE-89).
 // El término 'q' se refleja tal cual en el frontend -> habilita XSS reflejado (CWE-79).
 ticketsRouter.get('/', (req, res) => {
-  const q = (req.query.q as string) || '';
+  const q = req.query.q ?? '';
+  // ?q=a&q=b o ?q[x]=1 llegan como array/objeto: se rechazan en vez de fallar con 500.
+  if (typeof q !== 'string') {
+    return res.status(400).json({ error: 'El parámetro q debe ser texto' });
+  }
+  if (q.length > MAX_QUERY_LENGTH) {
+    return res.status(400).json({ error: `El parámetro q supera ${MAX_QUERY_LENGTH} caracteres` });
+  }
   let rows: any[];
   if (q) {
-    const sql = `${SELECT} WHERE t.title LIKE '%${q}%' OR t.description LIKE '%${q}%' OR t.customer_name LIKE '%${q}%' ORDER BY t.created_at DESC`;
-    rows = db.prepare(sql).all();
+    const sql = String.raw`${SELECT}
+      WHERE t.title LIKE @term ESCAPE '\'
+         OR t.description LIKE @term ESCAPE '\'
+         OR t.customer_name LIKE @term ESCAPE '\'
+      ORDER BY t.created_at DESC`;
+    rows = db.prepare(sql).all({ term: `%${escapeLike(q)}%` });
   } else {
     rows = db.prepare(`${SELECT} ORDER BY t.created_at DESC`).all();
   }
@@ -49,7 +101,9 @@ ticketsRouter.get('/', (req, res) => {
 // Sin verificación de propiedad ni rol (A01 Broken Access Control / IDOR / CWE-639).
 // Cualquier usuario autenticado (incluso 'viewer') lee cualquier ticket por id.
 ticketsRouter.get('/:id', (req, res) => {
-  const row = db.prepare(`${SELECT} WHERE t.id = ?`).get(req.params.id);
+  const id = parseId(req.params.id);
+  if (id === null) return res.status(400).json({ error: 'Id de ticket inválido' });
+  const row = db.prepare(`${SELECT} WHERE t.id = ?`).get(id);
   if (!row) return res.status(404).json({ error: 'Ticket no encontrado' });
   res.json(mapTicket(row));
 });
@@ -59,6 +113,8 @@ ticketsRouter.get('/:id', (req, res) => {
 // No se valida el rol: un 'viewer' (solo lectura) puede crear tickets (A01).
 ticketsRouter.post('/', (req: AuthedRequest, res) => {
   const b = req.body ?? {};
+  const invalid = validateTicketBody(b);
+  if (invalid) return res.status(400).json({ error: invalid });
   const info = db
     .prepare(
       `INSERT INTO tickets (title, description, status, priority, customer_name, customer_email, assignee_id, created_by_id)
@@ -82,9 +138,13 @@ ticketsRouter.post('/', (req: AuthedRequest, res) => {
 // Sin verificación de propiedad ni rol (A01 / IDOR): un 'viewer' puede editar
 // cualquier ticket de cualquier agente.
 ticketsRouter.put('/:id', (req, res) => {
-  const existing = db.prepare('SELECT * FROM tickets WHERE id = ?').get(req.params.id) as any;
-  if (!existing) return res.status(404).json({ error: 'Ticket no encontrado' });
+  const id = parseId(req.params.id);
+  if (id === null) return res.status(400).json({ error: 'Id de ticket inválido' });
   const b = req.body ?? {};
+  const invalid = validateTicketBody(b);
+  if (invalid) return res.status(400).json({ error: invalid });
+  const existing = db.prepare('SELECT * FROM tickets WHERE id = ?').get(id) as any;
+  if (!existing) return res.status(404).json({ error: 'Ticket no encontrado' });
   db.prepare(
     `UPDATE tickets SET
        title = @title, description = @description, status = @status, priority = @priority,
@@ -92,7 +152,7 @@ ticketsRouter.put('/:id', (req, res) => {
        assignee_id = @assignee_id, updated_at = datetime('now')
      WHERE id = @id`
   ).run({
-    id: req.params.id,
+    id,
     title: b.title ?? existing.title,
     description: b.description ?? existing.description,
     status: b.status ?? existing.status,
@@ -101,13 +161,15 @@ ticketsRouter.put('/:id', (req, res) => {
     customer_email: b.customerEmail ?? existing.customer_email,
     assignee_id: b.assigneeId ?? existing.assignee_id,
   });
-  const row = db.prepare(`${SELECT} WHERE t.id = ?`).get(req.params.id);
+  const row = db.prepare(`${SELECT} WHERE t.id = ?`).get(id);
   res.json(mapTicket(row));
 });
 
 // DELETE /api/tickets/:id  (sin verificación de rol -> A01)
 ticketsRouter.delete('/:id', (req, res) => {
-  const info = db.prepare('DELETE FROM tickets WHERE id = ?').run(req.params.id);
+  const id = parseId(req.params.id);
+  if (id === null) return res.status(400).json({ error: 'Id de ticket inválido' });
+  const info = db.prepare('DELETE FROM tickets WHERE id = ?').run(id);
   if (info.changes === 0) return res.status(404).json({ error: 'Ticket no encontrado' });
   res.json({ ok: true });
 });

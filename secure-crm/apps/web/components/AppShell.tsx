@@ -11,7 +11,7 @@ const nav = [
   { href: '/admin', label: 'Usuarios y roles', adminOnly: true },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const { user, ready, logout } = useAuth();
 
