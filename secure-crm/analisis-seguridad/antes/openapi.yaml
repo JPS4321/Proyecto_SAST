@@ -1,0 +1,164 @@
+openapi: 3.0.3
+info:
+  title: Secure CRM API - DAST laboratory
+  version: fase1
+  description: API specification derived from secure-crm Express routes for authorized local security testing.
+servers:
+  - url: http://localhost:4000
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+  parameters:
+    resourceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+  schemas:
+    Login:
+      type: object
+      properties:
+        username: { type: string, example: viewer }
+        password: { type: string, example: test-password }
+      required: [username, password]
+    Ticket:
+      type: object
+      properties:
+        title: { type: string, example: DAST test ticket }
+        description: { type: string, example: Test record for security scan }
+        status: { type: string, example: open }
+        priority: { type: string, example: medium }
+        customerName: { type: string, example: Test Customer }
+        customerEmail: { type: string, format: email, example: test@example.invalid }
+        assigneeId: { type: integer, nullable: true, example: 1 }
+    User:
+      type: object
+      properties:
+        username: { type: string, example: dast_test_user }
+        email: { type: string, format: email, example: test@example.invalid }
+        fullName: { type: string, example: DAST Test User }
+        role: { type: string, example: viewer }
+        password: { type: string, example: test-password }
+    Role:
+      type: object
+      properties:
+        role: { type: string, example: viewer }
+      required: [role]
+paths:
+  /api/health:
+    get:
+      operationId: health
+      summary: Health check
+      responses:
+        '200': { description: API status }
+  /api/auth/login:
+    post:
+      operationId: login
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Login' }
+      responses:
+        '200': { description: JWT and user }
+        '401': { description: Invalid credentials }
+  /api/dashboard:
+    get:
+      operationId: dashboard
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Dashboard metrics }
+  /api/tickets:
+    get:
+      operationId: listTickets
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+          example: test
+      responses:
+        '200': { description: Ticket list }
+    post:
+      operationId: createTicket
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Ticket' }
+      responses:
+        '201': { description: Ticket created }
+  /api/tickets/{id}:
+    parameters:
+      - $ref: '#/components/parameters/resourceId'
+    get:
+      operationId: getTicket
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Ticket }
+        '404': { description: Not found }
+    put:
+      operationId: updateTicket
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Ticket' }
+      responses:
+        '200': { description: Updated ticket }
+    delete:
+      operationId: deleteTicket
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: Deleted ticket }
+  /api/users:
+    get:
+      operationId: listUsers
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: User list }
+    post:
+      operationId: createUser
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/User' }
+      responses:
+        '201': { description: Created user }
+  /api/users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/resourceId'
+    get:
+      operationId: getUser
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: User }
+        '404': { description: Not found }
+  /api/users/{id}/role:
+    parameters:
+      - $ref: '#/components/parameters/resourceId'
+    put:
+      operationId: updateUserRole
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200': { description: Updated user role }

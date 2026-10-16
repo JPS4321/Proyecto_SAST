@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     'CRM de práctica para el laboratorio de Desarrollo de Software Seguro (OWASP ZAP, Burp Suite, CVSS). Universidad del Valle de Guatemala.',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es" className={`${inter.variable} ${display.variable} ${mono.variable}`}>
       <body className="font-sans antialiased">{children}</body>

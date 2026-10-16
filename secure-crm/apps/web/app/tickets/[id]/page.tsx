@@ -63,6 +63,10 @@ export default function TicketDetail() {
       </AppShell>
     );
 
+  let saveLabel = 'Guardar cambios';
+  if (saving) saveLabel = 'Guardando…';
+  if (saved) saveLabel = 'Guardado';
+
   return (
     <AppShell>
       <Link href="/tickets" className="mb-5 inline-block text-sm font-medium text-uvg-green hover:underline">← Volver a tickets</Link>
@@ -111,7 +115,7 @@ export default function TicketDetail() {
             </div>
             <div className="mt-2 flex gap-2">
               <Button onClick={save} disabled={saving} className="flex-1">
-                {saved ? 'Guardado' : saving ? 'Guardando…' : 'Guardar cambios'}
+                {saveLabel}
               </Button>
               <Button variant="danger" onClick={remove}>Eliminar</Button>
             </div>

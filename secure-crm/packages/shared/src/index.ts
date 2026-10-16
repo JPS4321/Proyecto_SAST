@@ -8,12 +8,10 @@ export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 export interface User {
   id: number;
   username: string;
-  email: string;
+  // GET /api/users solo incluye el correo cuando quien consulta es admin.
+  email?: string;
   fullName: string;
   role: Role;
-  // Nota: en un sistema real NUNCA se expondría el hash de la contraseña.
-  // Aquí se filtra a propósito (vulnerabilidad A04 / CWE-256).
-  passwordHash?: string;
   createdAt: string;
 }
 

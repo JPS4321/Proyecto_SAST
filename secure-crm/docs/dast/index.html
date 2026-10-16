@@ -467,12 +467,6 @@ Authorization: Bearer &lt;token de viewer&gt;
                     decenas de valores, pásalo a Intruder y marca el campo con
                     <span class="kbd">§</span> (paso 5).
                   </p>
-                  <!-- <figure class="shot">
-                <div class="box">
-                  <div class="l">Burp Repeater · SQLi en login</div>
-                  <div class="s">Pendiente: Repeater con request y response</div>
-                </div>
-              </figure> -->
                 </div>
               </div>
               <div class="step">
@@ -502,14 +496,6 @@ Authorization: Bearer &lt;token de viewer&gt;
                     <span class="kbd">Length</span>: la respuesta distinta
                     delata la contraseña.
                   </p>
-                  <!-- <figure class="shot">
-                <div class="box">
-                  <div class="l">Burp Intruder · Positions + Resultados</div>
-                  <div class="s">
-                    Pendiente: Positions, Payloads y resultados
-                  </div>
-                </div>
-              </figure> -->
                 </div>
               </div>
             </div>
@@ -772,12 +758,9 @@ Authorization: Bearer &lt;token de viewer&gt;
           tabs.forEach((x) => x.setAttribute("aria-selected", String(x === t)));
           document
             .querySelectorAll(".panel")
-            .forEach((p) =>
-              p.setAttribute(
-                "data-active",
-                p.dataset.panel === t.dataset.tab ? "1" : "0",
-              ),
-            );
+            .forEach((p) => {
+              p.dataset.active = p.dataset.panel === t.dataset.tab ? "1" : "0";
+            });
         }),
       );
 
@@ -967,7 +950,7 @@ Authorization: Bearer &lt;token de viewer&gt;
 
       const sevClass = { Crítica: "s-crit", Alta: "s-alta", Media: "s-media" };
       const esc = (s) =>
-        s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 
       document.getElementById("board").innerHTML = challenges
         .map(

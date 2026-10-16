@@ -19,7 +19,7 @@ export function Button({ variant = 'primary', size = 'md', className = '', ...pr
   return <button className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...props} />;
 }
 
-export function Card({ className = '', children }: { className?: string; children: React.ReactNode }) {
+export function Card({ className = '', children }: Readonly<{ className?: string; children: React.ReactNode }>) {
   return (
     <div className={`rounded-xl bg-white shadow-card ring-1 ring-uvg-green/8 ${className}`}>{children}</div>
   );
@@ -29,11 +29,11 @@ export function Field({
   label,
   hint,
   children,
-}: {
+}: Readonly<{
   label: string;
   hint?: string;
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <label className="block">
       <span className="mb-1.5 block text-[13px] font-medium text-uvg-deep/80">{label}</span>
@@ -46,7 +46,7 @@ export function Field({
 export const inputCls =
   'w-full rounded-lg border border-uvg-green/15 bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-uvg-graphite/40 transition focus:border-uvg-green focus:ring-2 focus:ring-uvg-mint/40 focus:outline-none';
 
-export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export function Input(props: Readonly<React.InputHTMLAttributes<HTMLInputElement>>) {
   return <input className={inputCls} {...props} />;
 }
 
@@ -62,7 +62,7 @@ const prioMap: Record<string, { label: string; cls: string }> = {
   urgent: { label: 'Urgente', cls: 'bg-red-50 text-red-700 ring-red-600/20' },
 };
 
-export function StatusPill({ status }: { status: string }) {
+export function StatusPill({ status }: Readonly<{ status: string }>) {
   const s = statusMap[status] ?? { label: status, cls: 'bg-slate-100 text-slate-600 ring-slate-500/20' };
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${s.cls}`}>
@@ -70,7 +70,7 @@ export function StatusPill({ status }: { status: string }) {
     </span>
   );
 }
-export function PriorityPill({ priority }: { priority: string }) {
+export function PriorityPill({ priority }: Readonly<{ priority: string }>) {
   const p = prioMap[priority] ?? { label: priority, cls: 'bg-slate-100 text-slate-600 ring-slate-500/20' };
   return (
     <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${p.cls}`}>
@@ -79,7 +79,7 @@ export function PriorityPill({ priority }: { priority: string }) {
   );
 }
 
-export function RoleBadge({ role }: { role: string }) {
+export function RoleBadge({ role }: Readonly<{ role: string }>) {
   const map: Record<string, string> = {
     admin: 'bg-uvg-mint/25 text-uvg-deep ring-uvg-green/25',
     agent: 'bg-white/15 text-white ring-white/25',

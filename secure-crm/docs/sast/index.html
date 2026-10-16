@@ -59,7 +59,7 @@
     <div class="wrap docs-grid">
       <nav class="docs-nav" aria-label="Secciones de la guía">
         <p class="docs-label">Antes</p>
-        <button type="button" data-doc="reglas" aria-selected="true">Reglas</button>
+        <button type="button" data-doc="reglas" aria-current="true">Reglas</button>
         <button type="button" data-doc="paso-0">Requisitos</button>
         <p class="docs-label">Fase 1</p>
         <button type="button" data-doc="fase-1">Qué entregar</button>
@@ -264,11 +264,11 @@
 docker pull postgres:17
 docker pull ghcr.io/zaproxy/zaproxy:stable</code></pre>
           <figure class="shot">
-            <img src="imagenes-sonar/sonar-pull.png" alt="Terminal descargando la imagen de SonarQube con docker pull" />
+            <img src="imagenes-sonar/sonar-pull.png" alt="Terminal descargando SonarQube con docker pull" />
             <figcaption>Descarga de la imagen de SonarQube</figcaption>
           </figure>
           <figure class="shot">
-            <img src="imagenes-sonar/postgress-pull-image.png" alt="Terminal descargando la imagen de PostgreSQL con docker pull" />
+            <img src="imagenes-sonar/postgress-pull-image.png" alt="Terminal descargando PostgreSQL con docker pull" />
             <figcaption>Descarga de la imagen de PostgreSQL</figcaption>
           </figure>
           <div class="callout">
@@ -1300,7 +1300,9 @@ npx @sonar/scan -Dsonar.token=$SONAR_TOKEN
       tab.addEventListener("click", () => {
         tabs.forEach((item) => item.setAttribute("aria-selected", String(item === tab)));
         panels.forEach((panel) =>
-          panel.setAttribute("data-active", panel.dataset.panel === tab.dataset.tab ? "1" : "0"),
+          {
+          panel.dataset.active = panel.dataset.panel === tab.dataset.tab ? "1" : "0";
+        },
         );
       });
     });
@@ -1318,7 +1320,7 @@ npx @sonar/scan -Dsonar.token=$SONAR_TOKEN
     });
     document.querySelectorAll(".docs-nav button[data-doc]").forEach((button) => {
       const on = button.dataset.doc === id;
-      button.setAttribute("aria-selected", String(on));
+      button.setAttribute("aria-current", String(on));
       if (on && scroll) button.scrollIntoView({ block: "nearest", inline: "nearest" });
     });
     const index = docOrder.indexOf(id);

@@ -7,3 +7,4 @@ apps/api/data/*.db-*
 .git
 *.log
 .env
+**/coverage

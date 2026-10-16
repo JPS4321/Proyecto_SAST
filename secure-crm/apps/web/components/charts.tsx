@@ -4,9 +4,9 @@ import { motion } from 'motion/react';
 // Donut de estados: anillos apilados con stroke-dasharray. Data viz real.
 export function StatusDonut({
   data,
-}: {
+}: Readonly<{
   data: { label: string; value: number; color: string }[];
-}) {
+}>) {
   const total = data.reduce((s, d) => s + d.value, 0) || 1;
   const R = 52;
   const C = 2 * Math.PI * R;
@@ -55,12 +55,12 @@ export function BarRow({
   value,
   max,
   color,
-}: {
+}: Readonly<{
   label: string;
   value: number;
   max: number;
   color: string;
-}) {
+}>) {
   const pct = Math.round((value / (max || 1)) * 100);
   return (
     <div className="flex items-center gap-3">
